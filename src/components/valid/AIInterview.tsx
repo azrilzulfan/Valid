@@ -64,6 +64,7 @@ export function AIInterview() {
   return (
     <section
       ref={sectionRef}
+      id="wawancara-ai"
       className="relative py-28 md:py-36 overflow-hidden bg-[var(--bg-a)] text-[var(--text-color)] transition-colors duration-500"
     >
       {/* Notebook Dot Pattern Background (Dark Theme variant) */}

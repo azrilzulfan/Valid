@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { BadgeCheck, ShieldCheck, FileBadge, Star, Award, GraduationCap } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 
 export function Hero() {
   const ref = useRef<HTMLElement>(null);
@@ -134,13 +135,13 @@ export function Hero() {
             className="hero-sub mt-12 sm:mt-16 mx-auto max-w-2xl text-sm sm:text-base md:text-lg leading-relaxed font-semibold"
             style={{ color: "var(--muted-foreground)", fontFamily: "var(--font-body)" }}
           >
-            Bukan sekadar CV. Bukan sekadar nilai. VALID bantu kamu nunjukin kalau skill kamu memang nyata dan bisa dipercaya.
+            Bukan sekadar CV. Bukan sekadar nilai. VALID bantu kamu nunjukin kalau skill kamu memang nyata dan bisa dipercaya
           </p>
 
           {/* CTA BUTTON */}
           <div className="mt-10 flex flex-col sm:flex-row justify-center items-center gap-4 w-full relative z-30">
-            <a
-              href="#cara-kerja"
+            <Link
+              to="/interview"
               className="hero-cta group inline-flex items-center justify-center rounded-full px-10 py-4 font-bold text-sm sm:text-base uppercase tracking-wider transition-transform hover:-translate-y-0.5 shadow-[0_20px_50px_-15px_rgba(37,99,235,0.6)] text-white"
               style={{ 
                 background: "linear-gradient(135deg, var(--primary), #1d4ed8)",
@@ -149,7 +150,7 @@ export function Hero() {
             >
               MULAI VERIFIKASI
               <span className="inline-block ml-2 transition-transform group-hover:translate-x-1">→</span>
-            </a>
+            </Link>
             <a
               href="#cara-kerja"
               className="hero-cta inline-flex items-center justify-center rounded-full px-10 py-4 font-bold text-sm sm:text-base uppercase tracking-wider border border-[var(--navy)]/15 bg-white/60 backdrop-blur transition-colors hover:bg-white text-[var(--navy)]"

@@ -60,6 +60,7 @@ export function BodyGood() {
   return (
     <section 
       ref={ref} 
+      id="solusi"
       className="relative py-28 md:py-36 px-6 overflow-hidden bg-[var(--bg-b)] text-[var(--text-color)] transition-colors duration-500"
     >
       {/* Soft Premium Gradient Background instead of dots */}

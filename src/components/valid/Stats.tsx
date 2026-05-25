@@ -65,7 +65,7 @@ export function Stats() {
   return (
     <section
       ref={sectionRef}
-      id="problem"
+      id="masalah"
       className="relative w-full h-screen overflow-hidden bg-[var(--bg-b)] text-[var(--text-color)] transition-colors duration-500"
     >
       {/* Smooth Gradient Transition from Hero */}

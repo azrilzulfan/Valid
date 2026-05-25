@@ -11,13 +11,18 @@ gsap.registerPlugin(ScrollTrigger);
 
 export function SDGs() {
   const ref = useRef<HTMLElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     // Animations removed to prevent cards from getting stuck at opacity: 0
   }, []);
 
   return (
-    <section ref={ref} className="relative py-32 px-6 bg-[var(--bg-b)] text-[var(--text-color)] transition-colors duration-500 overflow-hidden">
+    <section 
+      ref={sectionRef} 
+      id="dampak"
+      className="relative min-h-screen py-32 px-6 flex flex-col justify-center overflow-hidden bg-[var(--bg-a)] text-[var(--text-color)] transition-colors duration-500"
+    >
       {/* Soft Premium Gradient Background */}
       <div className="absolute inset-0 pointer-events-none z-0">
         <div className="absolute top-[10%] left-[5%] w-[60vw] h-[60vw] bg-emerald-100/50 dark:bg-emerald-900/10 rounded-full blur-[120px] mix-blend-multiply dark:mix-blend-screen opacity-60 animate-pulse" style={{ animationDuration: '9s' }} />

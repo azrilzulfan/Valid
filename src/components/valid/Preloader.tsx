@@ -35,23 +35,21 @@ export function Preloader({ onDone }: { onDone: () => void }) {
   return (
     <div
       ref={rootRef}
-      className="fixed inset-0 z-[100] flex flex-col items-center justify-center"
-      style={{ background: "var(--navy-deep)" }}
+      className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[var(--bg-a)] transition-colors duration-500"
     >
-      <div className="pre-brand font-display text-[15vw] md:text-[11rem] leading-none text-white">
-        VAL<span style={{ color: "var(--soft-blue)" }}>I</span>D
+      <div className="pre-brand">
+        <img src="/logo.png" alt="VALID Logo" className="w-[60vw] md:w-[400px] h-auto object-contain drop-shadow-xl" />
       </div>
-      <div className="pre-count mt-6 flex items-center gap-4 text-white/70 font-body text-sm tracking-[0.3em] uppercase">
-        <span className="h-px w-12 bg-white/30" />
+      <div className="pre-count mt-6 flex items-center gap-4 text-slate-500 dark:text-slate-400 font-body text-sm tracking-[0.3em] uppercase">
+        <span className="h-px w-12 bg-slate-300 dark:bg-slate-700" />
         Memuat {count.toString().padStart(3, "0")}
-        <span className="h-px w-12 bg-white/30" />
+        <span className="h-px w-12 bg-slate-300 dark:bg-slate-700" />
       </div>
-      <div className="absolute bottom-10 left-0 right-0 mx-auto h-[2px] w-[40vw] max-w-md overflow-hidden rounded-full bg-white/10">
+      <div className="absolute bottom-10 left-0 right-0 mx-auto h-[4px] w-[40vw] max-w-md overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
         <div
-          className="h-full"
+          className="h-full bg-blue-600 dark:bg-blue-400"
           style={{
             width: `${count}%`,
-            background: "linear-gradient(90deg, var(--soft-blue), white)",
             transition: "width 60ms linear",
           }}
         />

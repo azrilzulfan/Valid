@@ -13,6 +13,7 @@ import { BodyGood } from "@/components/valid/BodyGood";
 import { UntukSiapa } from "@/components/valid/UntukSiapa";
 import { SDGs } from "@/components/valid/SDGs";
 import { Kontak } from "@/components/valid/Kontak";
+import { PreFooterCTA } from "@/components/valid/PreFooterCTA";
 import { Footer } from "@/components/valid/Footer";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -54,6 +55,7 @@ function Index() {
       <UntukSiapa />
       <SDGs />
       <Kontak />
+      <PreFooterCTA />
       <Footer />
     </main>
   );

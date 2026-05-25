@@ -63,6 +63,13 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  
+  --color-admin-sidebar: var(--admin-sidebar);
+  --color-admin-sidebar-2: var(--admin-sidebar-2);
+  --color-admin-border-dark: var(--admin-border-dark);
+  --color-admin-success: var(--admin-success);
+  --color-admin-danger: var(--admin-danger);
+  --color-admin-warning: var(--admin-warning);
 }
 
 :root {
@@ -97,6 +104,14 @@
   --soft-blue: oklch(0.82 0.1 250);
   --light-bg: oklch(0.972 0.018 255);
   --danger: oklch(0.64 0.24 27);
+
+  /* Admin Dashboard Variables */
+  --admin-sidebar: #0F1F3D;
+  --admin-sidebar-2: #1B3A6B;
+  --admin-border-dark: rgba(255,255,255,0.08);
+  --admin-success: #16A34A;
+  --admin-danger: #DC2626;
+  --admin-warning: #D97706;
 
   /* Theme variables for consistent Light vs Dark Mode */
   --bg-a: #ffffff;
@@ -215,7 +230,12 @@
     transition: background 600ms var(--easing-cinematic);
   }
 
-  html, body { overflow-x: hidden; }
+  html, body {
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+  }
 
   h1, h2, h3, h4, h5, h6 { font-family: var(--font-display); letter-spacing: -0.03em; text-wrap: balance; }
   p { font-family: var(--font-body); text-wrap: pretty; }

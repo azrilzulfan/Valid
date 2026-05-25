@@ -2,9 +2,8 @@ import { useEffect, useState } from "react";
 import { Sun, Moon } from "lucide-react";
 
 const links = [
-  { label: "Tentang", href: "#tentang" },
   { label: "Cara Kerja", href: "#cara-kerja" },
-  { label: "Untuk Siapa", href: "#untuk-siapa" },
+  { label: "Coba AI", href: "#coba-ai" },
   { label: "Kontak", href: "#kontak" },
 ];
 
@@ -51,14 +50,7 @@ export function Navbar() {
       >
         {/* LOGO */}
         <a href="#top" className="flex items-center gap-2 pl-2">
-          <span
-            className={`font-display font-black tracking-tight transition-all ${
-              shrunk ? "text-xl sm:text-2xl" : "text-2xl sm:text-3xl"
-            }`}
-            style={{ color: "var(--navy)" }}
-          >
-            VALID
-          </span>
+          <img src="/logo.png" alt="VALID Logo" className={`object-contain transition-all ${shrunk ? 'h-[32px] sm:h-[40px]' : 'h-[44px] sm:h-[56px]'}`} />
         </a>
 
         {/* DESKTOP LINKS */}
@@ -98,19 +90,17 @@ export function Navbar() {
           </button>
 
           <a
-            href="#kontak"
-            className={`hidden sm:inline-flex items-center justify-center rounded-full font-bold transition-all hover:scale-105 active:scale-95 ${
+            href="/login"
+            className={`hidden sm:inline-flex items-center justify-center rounded-full font-bold transition-all hover:scale-105 active:scale-95 bg-slate-900 dark:bg-white text-white dark:text-slate-900 ${
               shrunk ? "px-5 py-2 text-sm" : "px-6 py-2.5 text-sm"
             }`}
-            style={{ background: "var(--navy)", color: "white" }}
           >
             Masuk
           </a>
           <button
             onClick={() => setOpen((o) => !o)}
-            className="md:hidden p-2.5 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+            className="md:hidden p-2.5 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-slate-900 dark:text-white"
             aria-label="Menu"
-            style={{ color: "var(--navy)" }}
           >
             <div className="w-5 flex flex-col gap-1.5">
               <span className="block h-0.5 bg-current rounded-full" />
@@ -134,7 +124,7 @@ export function Navbar() {
             </a>
           ))}
           <a
-            href="#kontak"
+            href="/login"
             onClick={() => setOpen(false)}
             className="block mt-2 px-4 py-3.5 rounded-xl font-bold text-white text-center"
             style={{ background: "var(--navy)" }}
