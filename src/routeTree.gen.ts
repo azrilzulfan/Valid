@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TentangRouteImport } from './routes/tentang'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as InterviewRouteImport } from './routes/interview'
@@ -33,6 +34,11 @@ import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminCoinsRouteImport } from './routes/admin.coins'
 import { Route as ProReviewIdRouteImport } from './routes/pro.review.$id'
 
+const TentangRoute = TentangRouteImport.update({
+  id: '/tentang',
+  path: '/tentang',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
@@ -155,6 +161,7 @@ export interface FileRoutesByFullPath {
   '/interview': typeof InterviewRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/tentang': typeof TentangRoute
   '/admin/coins': typeof AdminCoinsRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/verify': typeof AdminVerifyRoute
@@ -179,6 +186,7 @@ export interface FileRoutesByTo {
   '/interview': typeof InterviewRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/tentang': typeof TentangRoute
   '/admin/coins': typeof AdminCoinsRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/verify': typeof AdminVerifyRoute
@@ -205,6 +213,7 @@ export interface FileRoutesById {
   '/interview': typeof InterviewRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/tentang': typeof TentangRoute
   '/admin/coins': typeof AdminCoinsRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/verify': typeof AdminVerifyRoute
@@ -232,6 +241,7 @@ export interface FileRouteTypes {
     | '/interview'
     | '/login'
     | '/register'
+    | '/tentang'
     | '/admin/coins'
     | '/admin/users'
     | '/admin/verify'
@@ -256,6 +266,7 @@ export interface FileRouteTypes {
     | '/interview'
     | '/login'
     | '/register'
+    | '/tentang'
     | '/admin/coins'
     | '/admin/users'
     | '/admin/verify'
@@ -281,6 +292,7 @@ export interface FileRouteTypes {
     | '/interview'
     | '/login'
     | '/register'
+    | '/tentang'
     | '/admin/coins'
     | '/admin/users'
     | '/admin/verify'
@@ -307,6 +319,7 @@ export interface RootRouteChildren {
   InterviewRoute: typeof InterviewRoute
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
+  TentangRoute: typeof TentangRoute
   DashboardAiInterviewRoute: typeof DashboardAiInterviewRoute
   DashboardCoinsRoute: typeof DashboardCoinsRoute
   DashboardExploreRoute: typeof DashboardExploreRoute
@@ -325,6 +338,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tentang': {
+      id: '/tentang'
+      path: '/tentang'
+      fullPath: '/tentang'
+      preLoaderRoute: typeof TentangRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/register': {
       id: '/register'
       path: '/register'
@@ -511,6 +531,7 @@ const rootRouteChildren: RootRouteChildren = {
   InterviewRoute: InterviewRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
+  TentangRoute: TentangRoute,
   DashboardAiInterviewRoute: DashboardAiInterviewRoute,
   DashboardCoinsRoute: DashboardCoinsRoute,
   DashboardExploreRoute: DashboardExploreRoute,

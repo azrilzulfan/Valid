@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { Sun, Moon } from "lucide-react";
 
 const links = [
-  { label: "Cara Kerja", href: "#cara-kerja" },
-  { label: "Coba AI", href: "#coba-ai" },
-  { label: "Kontak", href: "#kontak" },
+  { label: "Tentang", href: "/tentang" },
+  { label: "Jelajah", href: "/#jelajah" },
+  { label: "Cara Kerja", href: "/#cara-kerja" },
+  { label: "Coba AI", href: "/#coba-ai" },
+  { label: "Kontak", href: "/#kontak" },
 ];
 
 export function Navbar() {
