@@ -17,6 +17,8 @@ const portfolioRoutes = require('./modules/portfolio/portfolio.routes');
 const badgeRoutes = require('./modules/badge/badge.routes');
 const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
 const notificationRoutes = require('./modules/notification/notification.routes');
+const verifierRoutes = require('./modules/verifier/verifier.routes');
+const paymentRoutes  = require('./modules/payment/payment.routes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -43,7 +45,7 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'OK',
-    message: 'VeriSkill API berjalan',
+    message: 'Valid API berjalan',
     timestamp: new Date(),
     version: '1.0.0'
   });
@@ -57,6 +59,8 @@ app.use('/api/portfolio', portfolioRoutes);
 app.use('/api/badge', badgeRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/verifier', verifierRoutes);
+app.use('/api/payment',  paymentRoutes);
 
 // Error Handler — harus paling bawah
 app.use(errorHandler);

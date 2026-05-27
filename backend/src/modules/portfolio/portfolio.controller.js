@@ -238,10 +238,157 @@ const submitPeerReview = async (req, res, next) => {
   }
 };
 
+// Tambahkan komentar user (sosial, tidak pengaruhi badge)
+const addUserComment = async (req, res, next) => {
+  try {
+    const { portfolioId } = req.params;
+    const { comment } = req.body;
+
+    if (!comment || comment.trim() === '') {
+      return res.status(400).json({ error: 'Komentar tidak boleh kosong' });
+    }
+
+    // Ambil nama user dari Firestore
+    const userSnap = await db.collection('users').doc(req.user.uid).get();
+    const displayName = userSnap.exists ? userSnap.data().displayName : 'Pengguna';
+
+    const portfolio = await Portfolio.findOne({ portfolioId });
+
+    if (!portfolio) {
+      return res.status(404).json({ error: 'Portofolio tidak ditemukan' });
+    }
+
+    await Portfolio.updateOne(
+      { portfolioId },
+      {
+        $push: {
+          userComments: {
+            commentId:   uuidv4(),
+            uid:         req.user.uid,
+            displayName,
+            comment:     comment.trim(),
+            createdAt:   new Date()
+          }
+        }
+      }
+    );
+
+    res.json({ message: 'Komentar berhasil ditambahkan' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Submit review resmi oleh verifikator
+const submitVerifierReview = async (req, res, next) => {
+  try {
+    const { portfolioId } = req.params;
+    const { technicalAccuracy, processDocumentation, originality, feedback } = req.body;
+
+    if (
+      technicalAccuracy === undefined ||
+      processDocumentation === undefined ||
+      originality === undefined ||
+      !feedback
+    ) {
+      return res.status(400).json({ error: 'Semua field penilaian wajib diisi' });
+    }
+
+    const portfolio = await Portfolio.findOne({ portfolioId });
+
+    if (!portfolio) {
+      return res.status(404).json({ error: 'Portofolio tidak ditemukan' });
+    }
+
+    // Pastikan yang submit adalah verifikator yang ditugaskan
+    if (portfolio.assignedVerifier !== req.user.uid) {
+      return res.status(403).json({
+        error: 'Kamu bukan verifikator yang ditugaskan untuk portofolio ini'
+      });
+    }
+
+    const overallScore = Math.round(
+      (technicalAccuracy + processDocumentation + originality) / 3
+    );
+
+    await Portfolio.updateOne(
+      { portfolioId },
+      {
+        status:          'approved',
+        verifiedScore:   overallScore,
+        verifierReview: {
+          reviewerId: req.user.uid,
+          scores: { technicalAccuracy, processDocumentation, originality, overall: overallScore },
+          feedback,
+          reviewedAt: new Date()
+        }
+      }
+    );
+
+    await db.collection('portfolios').doc(portfolioId).update({
+      status:        'approved',
+      verifiedScore: overallScore
+    });
+
+    // Update rating verifikator
+    const verifierProfile = await VerifierProfile.findOne({ uid: req.user.uid });
+    const newTotal = verifierProfile.totalReviews + 1;
+    const newRating = verifierProfile.averageRating
+      ? ((verifierProfile.averageRating * verifierProfile.totalReviews) + overallScore) / newTotal
+      : overallScore;
+
+    await VerifierProfile.updateOne(
+      { uid: req.user.uid },
+      { totalReviews: newTotal, averageRating: Math.round(newRating * 10) / 10 }
+    );
+
+    // Notifikasi ke kandidat
+    await createNotification(
+      portfolio.uid,
+      'portfolio_approved',
+      portfolioId,
+      portfolio.title
+    );
+
+    res.json({
+      message:      'Review verifikator berhasil disimpan',
+      overallScore
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Portofolio publik yang sudah approved
+const getPublicPortfolios = async (req, res, next) => {
+  try {
+    const { vocationField, page = 1 } = req.query;
+    const limit = 12;
+    const skip = (page - 1) * limit;
+
+    const filter = { status: 'approved' };
+    if (vocationField) filter.vocationField = vocationField;
+
+    const portfolios = await Portfolio
+      .find(filter)
+      .select('portfolioId uid title vocationField verifiedScore submittedAt')
+      .sort({ verifiedScore: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.json({ portfolios });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   uploadPortfolio,
   getMyPortfolios,
   getPortfolioById,
   getPendingReviews,
-  submitPeerReview
+  submitPeerReview,
+  addUserComment,
+  submitVerifierReview,
+  getPublicPortfolios
 };

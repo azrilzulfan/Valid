@@ -25,7 +25,19 @@ const NOTIFICATION_TEMPLATES = {
   interview_reminder: () => ({
     title: 'Lengkapi Proses Verifikasimu',
     message: 'Kamu belum menyelesaikan sesi wawancara AI. Selesaikan untuk mendapatkan badge.'
-  })
+  }),
+  verifier_approved: () => ({
+    title:   'Pendaftaran Verifikator Disetujui!',
+    message: 'Selamat! Kamu resmi menjadi verifikator di VeriSkill AI. Mulai terima request review.'
+  }),
+  verifier_rejected: (reason) => ({
+    title:   'Pendaftaran Verifikator Ditolak',
+    message: `Pendaftaran verifikatormu ditolak. ${reason ? 'Alasan: ' + reason : 'Hubungi admin untuk info lebih lanjut.'}`
+  }),
+  payment_confirmed: () => ({
+    title:   'Pembayaran Dikonfirmasi',
+    message: 'Pembayaran berhasil! Verifikator sudah ditugaskan dan akan segera mereview portofoliomu.'
+  }),
 };
 
 const createNotification = async (uid, type, relatedId = null, extraParam = '') => {

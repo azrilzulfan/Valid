@@ -17,29 +17,29 @@ const registerUser = async (req, res, next) => {
       return res.status(409).json({ error: 'User sudah terdaftar' });
     }
 
-    // Simpan data user ke Firestore
     const userData = {
       uid,
       email,
-      displayName: displayName || '',
-      vocationField: vocationField || '',
-      role: 'candidate', // candidate | reviewer | admin
+      displayName:     displayName || '',
+      vocationField:   vocationField || '',
+      role:            'candidate', // candidate | verifier | admin
+      verifierStatus:  null,        // null | pending | approved | rejected (hanya untuk verifier)
       reputationPoints: 0,
-      badgeLevel: null,
-      isVerified: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      badgeLevel:      null,
+      isVerified:      false,
+      createdAt:       new Date().toISOString(),
+      updatedAt:       new Date().toISOString(),
     };
 
     await userRef.set(userData);
 
     res.status(201).json({
-      message: 'Registrasi berhasil',
-      user: userData
-    });
-  } catch (error) {
-    next(error);
-  }
+        message: 'Registrasi berhasil',
+        user: userData
+      });
+    } catch (error) {
+      next(error);
+    }
 };
 
 // Login — verifikasi token Firebase dan kembalikan data user

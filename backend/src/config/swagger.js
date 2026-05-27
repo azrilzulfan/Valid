@@ -4,13 +4,12 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'VeriSkill AI API',
+      title: 'Valid API',
       version: '1.0.0',
-      description: 'API dokumentasi untuk platform VeriSkill AI — Peer Verification Tenaga Kerja Vokasi',
+      description: 'API dokumentasi untuk platform Valid — Peer Verification Tenaga Kerja Vokasi',
     },
     servers: [
       { url: 'http://localhost:5000', description: 'Development' },
-      { url: 'https://veriskill-api.railway.app', description: 'Production' }
     ],
     components: {
       securitySchemes: {

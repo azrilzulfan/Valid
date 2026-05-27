@@ -7,7 +7,10 @@ const {
   getMyPortfolios,
   getPortfolioById,
   getPendingReviews,
-  submitPeerReview
+  submitPeerReview,
+  addUserComment,
+  submitVerifierReview,
+  getPublicPortfolios
 } = require('./portfolio.controller');
 
 const upload = multer({
@@ -309,5 +312,104 @@ router.get('/:portfolioId', verifyToken, getPortfolioById);
  *         description: Sudah pernah mereview portofolio ini
  */
 router.post('/review/:portfolioId', verifyToken, submitPeerReview);
+
+/**
+ * @swagger
+ * /api/portfolio/public:
+ *   get:
+ *     summary: Daftar portofolio publik yang sudah approved
+ *     description: Mengembalikan portofolio yang sudah diverifikasi, bisa dilihat semua user.
+ *     tags: [Portfolio]
+ *     security:
+ *       - BearerAuth: []
+ */
+router.get('/public', verifyToken, getPublicPortfolios);
+
+/**
+ * @swagger
+ * /api/portfolio/{portfolioId}/comment:
+ *   post:
+ *     summary: Tambah komentar pada portofolio
+ *     description: Pengguna biasa dapat menambahkan komentar pada portofolio yang sudah approved. Komentar bersifat sosial dan tidak mempengaruhi skor atau badge.
+ *     tags: [Portfolio]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: portfolioId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [comment]
+ *             properties:
+ *               comment:
+ *                 type: string
+ *                 example: "Keren banget proyeknya, terutama bagian implementasi databasenya!"
+ *     responses:
+ *       200:
+ *         description: Komentar berhasil ditambahkan
+ *       400:
+ *         description: Komentar tidak boleh kosong
+ *       404:
+ *         description: Portofolio tidak ditemukan
+ */
+router.post('/:portfolioId/comment', verifyToken, addUserComment);
+
+/**
+ * @swagger
+ * /api/portfolio/{portfolioId}/verify:
+ *   post:
+ *     summary: Submit review resmi oleh verifikator
+ *     description: Hanya bisa dilakukan oleh verifikator yang sudah ditugaskan ke portofolio ini setelah pembayaran dikonfirmasi. Hasil review ini yang menentukan skor teknis untuk badge.
+ *     tags: [Portfolio]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: portfolioId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [technicalAccuracy, processDocumentation, originality, feedback]
+ *             properties:
+ *               technicalAccuracy:
+ *                 type: number
+ *                 minimum: 0
+ *                 maximum: 100
+ *                 example: 85
+ *               processDocumentation:
+ *                 type: number
+ *                 minimum: 0
+ *                 maximum: 100
+ *                 example: 80
+ *               originality:
+ *                 type: number
+ *                 minimum: 0
+ *                 maximum: 100
+ *                 example: 75
+ *               feedback:
+ *                 type: string
+ *                 example: "Proyek menunjukkan pemahaman teknis yang solid..."
+ *     responses:
+ *       200:
+ *         description: Review verifikator berhasil disimpan, portofolio approved
+ *       403:
+ *         description: Bukan verifikator yang ditugaskan untuk portofolio ini
+ *       404:
+ *         description: Portofolio tidak ditemukan
+ */
+router.post('/:portfolioId/verify', verifyToken, submitVerifierReview);
 
 module.exports = router;
