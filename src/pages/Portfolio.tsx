@@ -1,21 +1,22 @@
+// HALAMAN: pages/Portfolio
+// FUNGSI: Menampilkan halaman utama profil kandidat dan daftar portofolio/proyek mereka
+// API YANG DIBUTUHKAN: usersApi.getProfile, portfolioApi.getMyPortfolios
+// DUMMY DATA: -
+
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { 
   LayoutDashboard, FolderOpen, Mic, Star, Users, Coins, LogOut, ChevronRight, 
   CheckCircle2, Zap, Plus, Pencil, Trash2, X, UploadCloud, Compass 
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { UserSidebar } from '../components/valid/UserSidebar';
+import { portfolioApi, usersApi } from '../lib/api';
+import { AddProjectModal } from '../components/portfolio/AddProjectModal';
 
 const sectionVariants: Variants = {
   hidden: { opacity: 0, y: 24 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } }
-};
-
-const modalVariants: Variants = {
-  hidden: { opacity: 0, scale: 0.95 },
-  visible: { opacity: 1, scale: 1, transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] } },
-  exit: { opacity: 0, scale: 0.95, transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] } }
 };
 
 const slideOverVariants: Variants = {
@@ -27,6 +28,21 @@ const slideOverVariants: Variants = {
 export function Portfolio() {
   const navigate = useNavigate();
   const [isAddProjectOpen, setIsAddProjectOpen] = useState(false);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
+  const [portfolios, setPortfolios] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      usersApi.getProfile().catch(() => null),
+      portfolioApi.getMyPortfolios().catch(() => [])
+    ]).then(([profileRes, portfolioRes]) => {
+      setProfile(profileRes);
+      setPortfolios(portfolioRes || []);
+      setLoading(false);
+    });
+  }, []);
 
   return (
     <div className="flex w-full h-screen bg-[var(--bg-a)] overflow-hidden text-[var(--text-color)] font-sans">
@@ -71,8 +87,12 @@ export function Portfolio() {
             
             {/* Info */}
             <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left">
-              <h2 className="font-black text-[24px] md:text-[28px] text-[var(--text-color)] uppercase tracking-tight" style={{ fontFamily: 'var(--font-impact)' }}>RIZKY PRATAMA</h2>
-              <p className="font-bold text-[13px] md:text-[14px] text-[var(--text-muted)] mt-1" style={{ fontFamily: 'var(--font-body)' }}>Fresh Graduate Teknik Mesin — SMK Negeri 1 Bandung</p>
+              <h2 className="font-black text-[24px] md:text-[28px] text-[var(--text-color)] uppercase tracking-tight" style={{ fontFamily: 'var(--font-impact)' }}>
+                {loading ? 'MEMUAT...' : (profile?.displayName || 'RIZKY PRATAMA')}
+              </h2>
+              <p className="font-bold text-[13px] md:text-[14px] text-[var(--text-muted)] mt-1" style={{ fontFamily: 'var(--font-body)' }}>
+                {profile?.vocationField || 'Teknik Mesin'} — {profile?.location || 'Indonesia'}
+              </p>
               
               {/* Skills Row */}
               <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-[16px]">
@@ -183,12 +203,12 @@ export function Portfolio() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-[24px]">
-              {[
+              {(portfolios.length > 0 ? portfolios : [
                 { title: "Mesin Las MIG Otomatis", tech: ["CNC", "PENGELASAN"], desc: "Merancang sistem otomasi mesin las MIG untuk meningkatkan presisi dan efisiensi produksi.", date: "Mei 2026" },
                 { title: "Sistem Quality Control", tech: ["AUTOCAD", "QC"], desc: "Membangun prosedur quality control untuk lini produksi komponen otomotif.", date: "Apr 2026" },
                 { title: "Desain Jig & Fixture", tech: ["AUTOCAD", "CNC"], desc: "Mendesain jig dan fixture untuk proses manufaktur presisi tinggi.", date: "Feb 2026" },
                 { title: "Laporan Magang Industri", tech: ["DOKUMENTASI"], desc: "Dokumentasi lengkap pengalaman magang di PT Astra Manufacturing.", date: "Jan 2026" }
-              ].map((proj, i) => (
+              ]).map((proj: any, i: number) => (
                 <motion.div 
                   key={i}
                   whileHover={{ y: -4 }}
@@ -215,7 +235,7 @@ export function Portfolio() {
                     <h4 className="font-black text-[16px] text-[var(--text-color)] uppercase tracking-wide" style={{ fontFamily: 'var(--font-body)' }}>{proj.title}</h4>
                     
                     <div className="flex flex-wrap gap-[6px] mt-[12px]">
-                      {proj.tech.map(t => (
+                      {(proj.tech || proj.vocationField ? [proj.vocationField] : []).map((t: string) => (
                         <span key={t} className="bg-[var(--bg-a)] border-[2px] border-[var(--border-color)] text-[var(--text-muted)] rounded-md px-[8px] py-[4px] font-black text-[9px] uppercase tracking-widest" style={{ fontFamily: 'var(--font-body)' }}>
                           {t}
                         </span>
@@ -223,9 +243,11 @@ export function Portfolio() {
                     </div>
 
                     <p className="font-bold text-[12px] text-[var(--text-muted)] mt-[12px] line-clamp-2 leading-relaxed" style={{ fontFamily: 'var(--font-body)' }}>
-                      {proj.desc}
+                      {proj.desc || proj.description}
                     </p>
-                    <div className="font-bold text-[10px] text-[var(--text-muted)]/60 mt-[12px]" style={{ fontFamily: 'var(--font-body)' }}>{proj.date}</div>
+                    <div className="font-bold text-[10px] text-[var(--text-muted)]/60 mt-[12px]" style={{ fontFamily: 'var(--font-body)' }}>
+                      {proj.date || new Date(proj.createdAt || Date.now()).toLocaleDateString()}
+                    </div>
 
                     <div className="mt-auto pt-[16px] border-t-[2px] border-dashed border-[var(--border-color)] flex items-center justify-between">
                       <span className="font-bold text-[10px] text-[var(--text-muted)] uppercase tracking-widest border-[2px] border-[var(--border-color)] px-[8px] py-[4px] rounded-full" style={{ fontFamily: 'var(--font-body)' }}>
@@ -245,75 +267,7 @@ export function Portfolio() {
       </div>
 
       {/* --- MODALS --- */}
-      
-      {/* Add Project Modal */}
-      <AnimatePresence>
-        {isAddProjectOpen && (
-          <>
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100]"
-              onClick={() => setIsAddProjectOpen(false)}
-            />
-            <motion.div 
-              variants={modalVariants} initial="hidden" animate="visible" exit="exit"
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-[540px] max-h-[90vh] overflow-y-auto bg-[var(--card-bg)] border-[3px] border-slate-900 shadow-[8px_8px_0px_#0f172a] rounded-[2rem] p-[32px] sm:p-[40px] z-[101]"
-            >
-              <div className="flex justify-between items-center mb-[24px]">
-                <h2 className="font-black text-[24px] text-[var(--text-color)] uppercase tracking-tight" style={{ fontFamily: 'var(--font-impact)' }}>TAMBAH PROYEK</h2>
-                <button onClick={() => setIsAddProjectOpen(false)} className="p-2 hover:bg-[var(--bg-a)] rounded-full transition-colors">
-                  <X className="w-6 h-6 text-[var(--text-muted)]" />
-                </button>
-              </div>
-
-              <div className="flex flex-col gap-[20px]">
-                <div>
-                  <label className="block font-black text-[11px] text-[var(--text-muted)] uppercase tracking-widest mb-[8px]" style={{ fontFamily: 'var(--font-body)' }}>JUDUL PROYEK</label>
-                  <input type="text" placeholder="Nama proyek kamu" className="w-full bg-[var(--bg-a)] border-[2.5px] border-[var(--border-color)] rounded-[1rem] px-[16px] py-[14px] font-bold text-[14px] text-[var(--text-color)] focus:outline-none focus:border-blue-600 focus:shadow-[4px_4px_0px_#2563EB] transition-all placeholder:text-[var(--text-muted)]/50" style={{ fontFamily: 'var(--font-body)' }} />
-                </div>
-                
-                <div>
-                  <label className="block font-black text-[11px] text-[var(--text-muted)] uppercase tracking-widest mb-[8px]" style={{ fontFamily: 'var(--font-body)' }}>DESKRIPSI</label>
-                  <textarea rows={3} placeholder="Jelaskan proyek ini secara singkat" className="w-full bg-[var(--bg-a)] border-[2.5px] border-[var(--border-color)] rounded-[1rem] px-[16px] py-[14px] font-bold text-[14px] text-[var(--text-color)] focus:outline-none focus:border-blue-600 focus:shadow-[4px_4px_0px_#2563EB] transition-all resize-none placeholder:text-[var(--text-muted)]/50" style={{ fontFamily: 'var(--font-body)' }} />
-                </div>
-
-                <div>
-                  <label className="block font-black text-[11px] text-[var(--text-muted)] uppercase tracking-widest mb-[8px]" style={{ fontFamily: 'var(--font-body)' }}>TECH STACK</label>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {/* Dummy tags */}
-                    <span className="bg-blue-100 border-[2px] border-blue-600 text-blue-700 rounded-full px-[12px] py-[6px] font-black text-[10px] uppercase tracking-widest flex items-center gap-1 shadow-[2px_2px_0px_#2563EB]" style={{ fontFamily: 'var(--font-body)' }}>
-                      CNC <X className="w-3 h-3 cursor-pointer" />
-                    </span>
-                  </div>
-                  <input type="text" placeholder="Ketik dan tekan Enter" className="w-full bg-[var(--bg-a)] border-[2.5px] border-[var(--border-color)] rounded-[1rem] px-[16px] py-[14px] font-bold text-[14px] text-[var(--text-color)] focus:outline-none focus:border-blue-600 focus:shadow-[4px_4px_0px_#2563EB] transition-all placeholder:text-[var(--text-muted)]/50" style={{ fontFamily: 'var(--font-body)' }} />
-                </div>
-
-                <div>
-                  <label className="block font-black text-[11px] text-[var(--text-muted)] uppercase tracking-widest mb-[8px]" style={{ fontFamily: 'var(--font-body)' }}>UPLOAD MEDIA</label>
-                  <div className="w-full bg-[var(--bg-a)] border-[2.5px] border-dashed border-[var(--border-color)] rounded-[1.5rem] p-[32px] flex flex-col items-center justify-center cursor-pointer hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors group">
-                    <div className="w-[64px] h-[64px] rounded-full bg-white dark:bg-slate-800 border-[2.5px] border-[var(--border-color)] flex items-center justify-center shadow-[4px_4px_0px_var(--shadow-color)] group-hover:scale-110 transition-transform mb-[16px]">
-                      <UploadCloud className="w-[28px] h-[28px] text-[var(--text-muted)] group-hover:text-blue-600" />
-                    </div>
-                    <span className="font-black text-[13px] text-[var(--text-color)] uppercase tracking-wide" style={{ fontFamily: 'var(--font-body)' }}>Klik atau seret file ke sini</span>
-                    <span className="font-bold text-[11px] text-[var(--text-muted)] mt-[6px]" style={{ fontFamily: 'var(--font-body)' }}>JPG, PNG, MP4 hingga 20MB</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-[16px] mt-[32px]">
-                <button onClick={() => setIsAddProjectOpen(false)} className="flex-1 bg-[var(--bg-a)] border-[2.5px] border-[var(--border-color)] text-[var(--text-color)] rounded-[1rem] py-[14px] font-black text-[13px] uppercase tracking-wider hover:border-slate-900 hover:shadow-[3px_3px_0px_#0f172a] transition-all" style={{ fontFamily: 'var(--font-body)' }}>
-                  Batal
-                </button>
-                <button className="flex-1 bg-blue-600 border-[2.5px] border-slate-900 text-white rounded-[1rem] py-[14px] font-black text-[13px] uppercase tracking-wider shadow-[3px_3px_0px_#0f172a] hover:shadow-[5px_5px_0px_#0f172a] hover:-translate-y-0.5 transition-all" style={{ fontFamily: 'var(--font-body)' }}>
-                  Simpan Proyek
-                </button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
-
+      <AddProjectModal isOpen={isAddProjectOpen} onClose={() => setIsAddProjectOpen(false)} />
 
     </div>
   );

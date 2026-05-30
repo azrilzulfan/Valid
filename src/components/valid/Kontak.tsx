@@ -1,3 +1,8 @@
+// HALAMAN: C:\laragon\www\valid-react\src\components\valid\Kontak.tsx
+// FUNGSI: Komponen/Halaman (TODO)
+// API YANG DIBUTUHKAN: (TODO)
+// DUMMY DATA: (TODO)
+
 import { useState, useEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";

@@ -1,3 +1,8 @@
+// HALAMAN: C:\laragon\www\valid-react\src\components\valid\Footer.tsx
+// FUNGSI: Komponen/Halaman (TODO)
+// API YANG DIBUTUHKAN: (TODO)
+// DUMMY DATA: (TODO)
+
 export function Footer() {
   return (
     <footer className="relative px-6 pt-24 pb-12 bg-[var(--bg-b)] text-[var(--text-color)] transition-colors duration-500 border-t border-[var(--border-color)]/10 z-10">
@@ -5,9 +10,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-8 pb-16">
           {/* Brand Info */}
           <div className="md:col-span-5 flex flex-col items-start gap-4">
-            <div className="font-display text-4xl sm:text-5xl font-black leading-none text-[var(--text-color)] uppercase tracking-tight">
-              VAL<span className="text-blue-600 dark:text-blue-400">I</span>D
-            </div>
+            <img src="/logo.png" alt="VALID Logo" className="h-[48px] sm:h-[56px] object-contain hover:scale-105 transition-transform cursor-pointer" onClick={() => window.location.href = '/'} />
             <p className="text-[var(--text-muted)] text-base font-semibold leading-relaxed max-w-sm">
               Platform verifikasi peer berbasis AI untuk talenta dan pekerja vokasi Indonesia yang terpercaya.
             </p>

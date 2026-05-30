@@ -1,3 +1,8 @@
+// HALAMAN: C:\laragon\www\valid-react\src\pages\PublicProfile.tsx
+// FUNGSI: Komponen/Halaman (TODO)
+// API YANG DIBUTUHKAN: (TODO)
+// DUMMY DATA: (TODO)
+
 import { motion, Variants } from 'framer-motion';
 import { CheckCircle2, Zap, ArrowRight, ExternalLink } from 'lucide-react';
 import { useState, useEffect } from 'react';

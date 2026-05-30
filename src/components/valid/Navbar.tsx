@@ -1,3 +1,8 @@
+// HALAMAN: C:\laragon\www\valid-react\src\components\valid\Navbar.tsx
+// FUNGSI: Komponen/Halaman (TODO)
+// API YANG DIBUTUHKAN: (TODO)
+// DUMMY DATA: (TODO)
+
 import { useEffect, useState } from "react";
 import { Sun, Moon } from "lucide-react";
 

@@ -1,3 +1,8 @@
+// HALAMAN: C:\laragon\www\valid-react\src\routes\admin.tsx
+// FUNGSI: Komponen/Halaman (TODO)
+// API YANG DIBUTUHKAN: (TODO)
+// DUMMY DATA: (TODO)
+
 import { createFileRoute, Outlet } from '@tanstack/react-router';
 import { AdminSidebar } from '../components/admin/AdminSidebar';
 import { AdminToastProvider } from '../components/admin/AdminToast';

@@ -1,3 +1,8 @@
+// HALAMAN: C:\laragon\www\valid-react\src\pages\ProDashboard.tsx
+// FUNGSI: Komponen/Halaman (TODO)
+// API YANG DIBUTUHKAN: (TODO)
+// DUMMY DATA: (TODO)
+
 import { motion, Variants } from 'framer-motion';
 import { 
   LayoutDashboard, FolderOpen, Star, Coins, LogOut, ChevronRight, 

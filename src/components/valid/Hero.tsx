@@ -1,3 +1,8 @@
+// HALAMAN: C:\laragon\www\valid-react\src\components\valid\Hero.tsx
+// FUNGSI: Komponen/Halaman (TODO)
+// API YANG DIBUTUHKAN: (TODO)
+// DUMMY DATA: (TODO)
+
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { BadgeCheck, ShieldCheck, FileBadge, Star, Award, GraduationCap } from "lucide-react";
@@ -83,16 +88,10 @@ export function Hero() {
             style={{ top: item.top, left: item.left, right: item.right, bottom: item.bottom }}
           >
             <div
-              className={`floating-item flex items-center justify-center p-4 sm:p-6 rounded-[2rem] opacity-90 ${item.className}`}
-              style={{
-                background: "linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.4))",
-                backdropFilter: "blur(12px)",
-                WebkitBackdropFilter: "blur(12px)",
-                boxShadow: "0 20px 40px rgba(37,99,235,0.15), inset 0 0 0 1px rgba(255,255,255,0.6), inset 2px 2px 5px rgba(255,255,255,0.8)",
-              }}
+              className={`floating-item flex items-center justify-center p-4 sm:p-6 rounded-[2rem] opacity-90 backdrop-blur-xl bg-white/80 dark:bg-slate-800/50 border border-white/50 dark:border-slate-700/50 shadow-xl dark:shadow-[0_20px_40px_rgba(0,0,0,0.4)] ${item.className}`}
             >
               <item.Icon 
-                className="w-12 h-12 sm:w-20 sm:h-20 text-[var(--primary)]" 
+                className="w-12 h-12 sm:w-20 sm:h-20 text-blue-600 dark:text-blue-400" 
                 strokeWidth={1.5} 
                 style={{ filter: "drop-shadow(0 4px 6px rgba(37,99,235,0.2))" }} 
               />
@@ -115,15 +114,13 @@ export function Hero() {
 
           {/* OVERLAPPING BADGE */}
           <div 
-            className="hero-badge relative -mt-6 sm:-mt-10 md:-mt-16 z-20 px-6 sm:px-12 py-2 sm:py-4 border-4 sm:border-[6px] shadow-xl"
+            className="hero-badge relative -mt-6 sm:-mt-10 md:-mt-16 z-20 px-6 sm:px-12 py-2 sm:py-4 border-4 sm:border-[6px] border-white dark:border-[#0b1121] shadow-xl bg-blue-600 dark:bg-blue-600"
             style={{ 
-              backgroundColor: "var(--primary)",
-              borderColor: "var(--card-bg)",
               transform: "rotate(-3deg)",
             }}
           >
             <h2 
-              className="text-[9vw] sm:text-[7vw] md:text-[5rem] lg:text-[6rem] leading-none tracking-wide text-[var(--primary-foreground)] font-black"
+              className="text-[9vw] sm:text-[7vw] md:text-[5rem] lg:text-[6rem] leading-none tracking-wide text-white font-black"
               style={{ fontFamily: "var(--font-impact)", textTransform: "uppercase" }}
             >
               KEMAMPUANMU
@@ -142,18 +139,15 @@ export function Hero() {
           <div className="mt-10 flex flex-col sm:flex-row justify-center items-center gap-4 w-full relative z-30">
             <Link
               to="/interview"
-              className="hero-cta group inline-flex items-center justify-center rounded-full px-10 py-4 font-bold text-sm sm:text-base uppercase tracking-wider transition-transform hover:-translate-y-0.5 shadow-[0_20px_50px_-15px_rgba(37,99,235,0.6)] text-white"
-              style={{ 
-                background: "linear-gradient(135deg, var(--primary), #1d4ed8)",
-                fontFamily: "var(--font-body)"
-              }}
+              className="hero-cta group inline-flex items-center justify-center rounded-full px-10 py-4 font-bold text-sm sm:text-base uppercase tracking-wider transition-transform hover:-translate-y-0.5 shadow-[0_20px_50px_-15px_rgba(37,99,235,0.6)] bg-blue-600 hover:bg-blue-700 text-white"
+              style={{ fontFamily: "var(--font-body)" }}
             >
               MULAI VERIFIKASI
               <span className="inline-block ml-2 transition-transform group-hover:translate-x-1">→</span>
             </Link>
             <a
               href="#cara-kerja"
-              className="hero-cta inline-flex items-center justify-center rounded-full px-10 py-4 font-bold text-sm sm:text-base uppercase tracking-wider border border-[var(--navy)]/15 bg-white/60 backdrop-blur transition-colors hover:bg-white text-[var(--navy)]"
+              className="hero-cta inline-flex items-center justify-center rounded-full px-10 py-4 font-bold text-sm sm:text-base uppercase tracking-wider border-[2.5px] border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 backdrop-blur transition-colors hover:bg-white dark:hover:bg-slate-800 text-slate-900 dark:text-white shadow-lg dark:shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
               style={{ fontFamily: "var(--font-body)" }}
             >
               LIHAT CARA KERJA

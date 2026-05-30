@@ -1,3 +1,8 @@
+// HALAMAN: C:\laragon\www\valid-react\src\pages\Explore.tsx
+// FUNGSI: Komponen/Halaman (TODO)
+// API YANG DIBUTUHKAN: (TODO)
+// DUMMY DATA: (TODO)
+
 import { motion, Variants } from 'framer-motion';
 import { LayoutDashboard, FolderOpen, Mic, Star, Users, Coins, LogOut, Search, CheckCircle2, ChevronRight, Compass } from 'lucide-react';
 import { useState } from 'react';

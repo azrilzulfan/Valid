@@ -1,3 +1,8 @@
+// HALAMAN: C:\laragon\www\valid-react\src\components\admin\AdminSidebar.tsx
+// FUNGSI: Komponen/Halaman (TODO)
+// API YANG DIBUTUHKAN: (TODO)
+// DUMMY DATA: (TODO)
+
 import { Link, useLocation } from '@tanstack/react-router';
 import { LayoutDashboard, ShieldCheck, Users, Coins, LogOut } from 'lucide-react';
 

@@ -1,3 +1,8 @@
+// HALAMAN: C:\laragon\www\valid-react\src\components\admin\AdminPageHeader.tsx
+// FUNGSI: Komponen/Halaman (TODO)
+// API YANG DIBUTUHKAN: (TODO)
+// DUMMY DATA: (TODO)
+
 import { motion } from 'framer-motion';
 
 interface AdminPageHeaderProps {

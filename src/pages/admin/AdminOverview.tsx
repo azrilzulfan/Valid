@@ -1,3 +1,8 @@
+// HALAMAN: C:\laragon\www\valid-react\src\pages\admin\AdminOverview.tsx
+// FUNGSI: Komponen/Halaman (TODO)
+// API YANG DIBUTUHKAN: (TODO)
+// DUMMY DATA: (TODO)
+
 import { motion } from 'framer-motion';
 import { AdminPageHeader } from '../../components/admin/AdminPageHeader';
 import { Users, ShieldCheck, Briefcase, CreditCard } from 'lucide-react';

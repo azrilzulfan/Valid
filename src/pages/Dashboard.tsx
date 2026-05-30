@@ -1,7 +1,13 @@
+// HALAMAN: C:\laragon\www\valid-react\src\pages\Dashboard.tsx
+// FUNGSI: Komponen/Halaman (TODO)
+// API YANG DIBUTUHKAN: (TODO)
+// DUMMY DATA: (TODO)
+
 import { motion, animate, useMotionValue, Variants } from 'framer-motion';
 import { LayoutDashboard, FolderOpen, Mic, Star, Users, Coins, LogOut, ChevronRight, Activity, Compass } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from '@tanstack/react-router';
+import { dashboardApi } from '../lib/api';
 import { ThemeToggle } from '../components/valid/ThemeToggle';
 import { UserSidebar } from '../components/valid/UserSidebar';
 
@@ -32,6 +38,21 @@ function AnimatedNumber({ value }: { value: number }) {
 }
 
 export function Dashboard() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    dashboardApi.getCandidateDashboard()
+      .then(res => {
+        setData(res);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Error fetching dashboard:", err);
+        setLoading(false);
+      });
+  }, []);
+
   return (
     <div className="flex w-full h-screen bg-[var(--bg-a)] overflow-hidden text-[var(--text-color)] font-sans">
       
@@ -61,7 +82,9 @@ export function Dashboard() {
                 Minggu, 25 Mei 2026
               </div>
               <div className="font-black text-[16px] md:text-[20px] text-blue-600 tracking-[0.1em] uppercase" style={{ fontFamily: 'var(--font-impact)' }}>SELAMAT DATANG,</div>
-              <div className="font-black text-[40px] md:text-[48px] text-[var(--text-color)] leading-[0.9] tracking-tighter mt-1 uppercase" style={{ fontFamily: 'var(--font-impact)' }}>RIZKY.</div>
+              <div className="font-black text-[40px] md:text-[48px] text-[var(--text-color)] leading-[0.9] tracking-tighter mt-1 uppercase" style={{ fontFamily: 'var(--font-impact)' }}>
+                {loading ? 'MEMUAT...' : (data?.profile?.displayName || 'RIZKY')}
+              </div>
             </div>
             <button 
               onClick={() => window.location.href = '/dashboard/ai-interview'}
@@ -74,9 +97,9 @@ export function Dashboard() {
           {/* STAT CARDS ROW */}
           <motion.div variants={sectionVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[16px] mb-[32px]">
             {[
-              { val: 3, label: 'WAWANCARA SELESAI', trend: '+ 1 BULAN INI' },
-              { val: 4, label: 'PROYEK PORTFOLIO', trend: '+ 2 BULAN INI' },
-              { val: 1, label: 'REVIEW TERTUNDA', trend: 'MENUNGGU RESPONS' }
+              { val: data?.summary?.totalInterviews ?? 3, label: 'WAWANCARA SELESAI', trend: '+ 1 BULAN INI' },
+              { val: data?.summary?.totalProjects ?? 4, label: 'PROYEK PORTFOLIO', trend: '+ 2 BULAN INI' },
+              { val: data?.summary?.pendingReviews ?? 1, label: 'REVIEW TERTUNDA', trend: 'MENUNGGU RESPONS' }
             ].map((stat, i) => (
               <div key={i} className="bg-[var(--card-bg)] border-[2.5px] border-[var(--border-color)] rounded-[1.5rem] p-[24px] flex flex-col items-start shadow-[4px_4px_0px_var(--shadow-color)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_var(--shadow-color)] transition-all duration-300 group">
                 <div className="font-black text-[48px] text-blue-600 leading-[0.8] group-hover:scale-110 transition-transform origin-left" style={{ fontFamily: 'var(--font-impact)' }}>
@@ -165,18 +188,20 @@ export function Dashboard() {
                     <circle cx="50" cy="50" r="42" stroke="#2563EB" strokeWidth="8" fill="none" strokeDasharray="264" strokeDashoffset="58" strokeLinecap="round" />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center pt-1">
-                    <div className="font-black text-[24px] text-[var(--text-color)] leading-none" style={{ fontFamily: 'var(--font-impact)' }}>78</div>
+                    <div className="font-black text-[24px] text-[var(--text-color)] leading-none" style={{ fontFamily: 'var(--font-impact)' }}>
+                      {data?.lastInterviewResult?.score ?? 78}
+                    </div>
                     <div className="font-black text-[9px] uppercase tracking-widest text-[var(--text-muted)] leading-none mt-1" style={{ fontFamily: 'var(--font-body)' }}>/100</div>
                   </div>
                 </div>
 
                 {/* Metric Bars */}
                 <div className="flex-1 w-full flex flex-col gap-[16px]">
-                  {[
+                  {(data?.lastInterviewResult?.metrics || [
                     { label: 'KONTAK MATA', val: 84 },
                     { label: 'KEPERCAYAAN DIRI', val: 71 },
                     { label: 'KOMUNIKASI', val: 79 },
-                  ].map((m, i) => (
+                  ]).map((m: any, i: number) => (
                     <div key={i} className="flex flex-col">
                       <div className="flex justify-between items-center mb-[6px]">
                         <span className="font-black text-[10px] text-[var(--text-color)] tracking-widest uppercase" style={{ fontFamily: 'var(--font-body)' }}>{m.label}</span>
@@ -210,13 +235,13 @@ export function Dashboard() {
               <div className="font-black text-[18px] md:text-[20px] text-[var(--text-color)] uppercase tracking-tight mb-[16px] shrink-0" style={{ fontFamily: 'var(--font-impact)' }}>AKTIVITAS TERKINI</div>
               
               <div className="bg-[var(--card-bg)] border-[2.5px] border-[var(--border-color)] shadow-[4px_4px_0px_var(--shadow-color)] rounded-[1.5rem] overflow-hidden flex flex-col flex-1 min-h-[220px]">
-                {[
+                {(data?.activities || [
                   { type: 'blue', text: 'Sesi wawancara berhasil diselesaikan', time: '2 jam lalu' },
                   { type: 'yellow', text: 'Permintaan review dikirim ke Budi Santoso', time: '1 hari lalu' },
                   { type: 'yellow', text: '50 koin berhasil ditambahkan', time: '2 hari lalu' },
                   { type: 'gray', text: 'Proyek ditambahkan ke portofolio', time: '3 hari lalu' },
                   { type: 'gray', text: 'Akun berhasil dibuat', time: '7 hari lalu' },
-                ].map((act, i) => (
+                ]).map((act: any, i: number) => (
                   <motion.div 
                     key={i}
                     initial={{ opacity: 0, x: -10 }}

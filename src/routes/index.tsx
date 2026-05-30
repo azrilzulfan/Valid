@@ -1,3 +1,8 @@
+// HALAMAN: C:\laragon\www\valid-react\src\routes\index.tsx
+// FUNGSI: Komponen/Halaman (TODO)
+// API YANG DIBUTUHKAN: (TODO)
+// DUMMY DATA: (TODO)
+
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import gsap from "gsap";

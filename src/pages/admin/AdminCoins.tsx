@@ -1,3 +1,8 @@
+// HALAMAN: C:\laragon\www\valid-react\src\pages\admin\AdminCoins.tsx
+// FUNGSI: Komponen/Halaman (TODO)
+// API YANG DIBUTUHKAN: (TODO)
+// DUMMY DATA: (TODO)
+
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { AdminPageHeader } from '../../components/admin/AdminPageHeader';

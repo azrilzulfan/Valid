@@ -1,7 +1,14 @@
+// HALAMAN: C:\laragon\www\valid-react\src\pages\Login.tsx
+// FUNGSI: Komponen/Halaman (TODO)
+// API YANG DIBUTUHKAN: (TODO)
+// DUMMY DATA: (TODO)
+
 import { motion, Variants } from 'framer-motion';
 import { AuthLeftPanel } from '../components/auth/AuthLeftPanel';
 import { useState } from 'react';
 import { useNavigate, Link } from '@tanstack/react-router';
+import { auth, signInWithEmailAndPassword } from '../lib/firebase';
+import { authApi } from '../lib/api';
 
 const containerVariants: Variants = {
   hidden: {},
@@ -18,6 +25,28 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      const token = await result.user.getIdToken();
+      localStorage.setItem('valid_firebase_token', token);
+      
+      const response = await authApi.login();
+      const role = response.role || 'candidate'; // Fallback
+      localStorage.setItem('valid_role', role);
+      
+      if (role === 'reviewer') {
+        navigate({ to: '/pro/dashboard' as any });
+      } else {
+        navigate({ to: '/dashboard' });
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Gagal masuk. Cek kembali email dan password Anda.");
+    }
+  };
 
   return (
     <div className="flex flex-col md:flex-row w-full h-screen overflow-hidden bg-[var(--bg-a)]">
@@ -80,7 +109,7 @@ export function Login() {
               </div>
 
               {/* Form */}
-              <form onSubmit={(e) => { e.preventDefault(); navigate({ to: '/dashboard' }); }}>
+              <form onSubmit={handleLogin}>
                 <div className="mb-5">
                   <label className="block text-[11px] uppercase tracking-wider font-black text-[var(--text-muted)] mb-2">Email</label>
                   <input 

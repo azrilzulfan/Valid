@@ -1,3 +1,8 @@
+// HALAMAN: C:\laragon\www\valid-react\src\components\valid\EditProfileModal.tsx
+// FUNGSI: Komponen/Halaman (TODO)
+// API YANG DIBUTUHKAN: (TODO)
+// DUMMY DATA: (TODO)
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, UploadCloud, Camera } from 'lucide-react';
 import React, { useState } from 'react';

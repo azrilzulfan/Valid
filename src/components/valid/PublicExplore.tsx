@@ -1,3 +1,8 @@
+// HALAMAN: C:\laragon\www\valid-react\src\components\valid\PublicExplore.tsx
+// FUNGSI: Komponen/Halaman (TODO)
+// API YANG DIBUTUHKAN: (TODO)
+// DUMMY DATA: (TODO)
+
 import { Search, CheckCircle2, ChevronRight } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
 
@@ -44,7 +49,7 @@ export function PublicExplore() {
   const navigate = useNavigate();
 
   return (
-    <section id="jelajah" className="w-full bg-[var(--bg-b)] py-20 md:py-32 relative text-[var(--text-color)]">
+    <section id="jelajah" className="w-full bg-[var(--bg-a)] py-20 md:py-32 relative text-[var(--text-color)]">
       <div className="max-w-7xl mx-auto px-6 md:px-12">
         {/* Header */}
         <div className="mb-12">

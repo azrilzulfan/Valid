@@ -1,8 +1,22 @@
+// HALAMAN: C:\laragon\www\valid-react\src\components\valid\Tentang.tsx
+// FUNGSI: Komponen/Halaman (TODO)
+// API YANG DIBUTUHKAN: (TODO)
+// DUMMY DATA: (TODO)
+
+import { useEffect, useState } from 'react';
+import { dashboardApi } from '../../lib/api';
 import { ShieldCheck, Zap, Award, Target } from 'lucide-react';
 import { Navbar } from './Navbar';
 import { Footer } from './Footer';
 
 export function Tentang() {
+  const [stats, setStats] = useState<any>(null);
+
+  useEffect(() => {
+    dashboardApi.getStats()
+      .then((data) => setStats(data))
+      .catch((err) => console.error("Failed to load stats:", err));
+  }, []);
   return (
     <div className="min-h-screen bg-[var(--bg-b)] flex flex-col font-sans">
       <Navbar />
@@ -48,14 +62,14 @@ export function Tentang() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-24">
             {[
               {
-                title: "12.000+",
+                title: stats ? `${stats.totalVerified || "12.000+"}` : "12.000+",
                 subtitle: "Klaim Diverifikasi",
                 desc: "Kami terus menganalisis dan memvalidasi portofolio dengan ketelitian tinggi.",
                 color: "bg-blue-100",
                 textColor: "text-blue-600"
               },
               {
-                title: "94%",
+                title: stats ? `${stats.aiAccuracy || "94"}%` : "94%",
                 subtitle: "Akurasi Deteksi AI",
                 desc: "Sistem kami mampu membedakan karya otentik dari template bajakan.",
                 color: "bg-yellow-100",

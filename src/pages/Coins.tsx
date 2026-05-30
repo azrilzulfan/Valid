@@ -1,3 +1,8 @@
+// HALAMAN: C:\laragon\www\valid-react\src\pages\Coins.tsx
+// FUNGSI: Komponen/Halaman (TODO)
+// API YANG DIBUTUHKAN: (TODO)
+// DUMMY DATA: (TODO)
+
 import { motion, AnimatePresence, useMotionValue, animate, Variants } from 'framer-motion';
 import { LayoutDashboard, FolderOpen, Mic, Star, Users, Coins as CoinsIcon, ChevronRight, X, CheckCircle2, Compass } from 'lucide-react';
 import { useState, useEffect } from 'react';

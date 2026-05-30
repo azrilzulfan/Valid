@@ -194,24 +194,24 @@
   --sidebar-ring: oklch(0.551 0.027 264.364);
 
   /* Theme variables for consistent Light vs Dark Mode */
-  --bg-a: #070b14;
-  --bg-b: #0c1020;
-  --text-color: #f8fafc;
+  --bg-a: #0b1121;
+  --bg-b: #0f172a;
+  --text-color: #f1f5f9;
   --text-muted: #94a3b8;
-  --border-color: #f8fafc;
-  --shadow-color: #2563eb;
-  --card-bg: #0f172a;
-  --card-bg-hover: #1e293b;
-  --text-outline-color: #3b82f6;
+  --border-color: #334155;
+  --shadow-color: #020617;
+  --card-bg: #1e293b;
+  --card-bg-hover: #334155;
+  --text-outline-color: #475569;
 
   /* Overrides for Hero and existing elements */
-  --gradient-sky: linear-gradient(180deg, #070b14, #0c1020);
+  --gradient-sky: linear-gradient(180deg, #0b1121, #0f172a);
   --gradient-hero-aura:
-    radial-gradient(circle at 22% 18%, rgba(37, 99, 235, 0.15), transparent 32%),
-    radial-gradient(circle at 78% 22%, rgba(16, 185, 129, 0.1), transparent 30%),
-    radial-gradient(circle at 50% 78%, rgba(234, 179, 8, 0.1), transparent 36%);
-  --navy: #f8fafc;
-  --navy-deep: #070b14;
+    radial-gradient(circle at 22% 18%, rgba(37, 99, 235, 0.08), transparent 40%),
+    radial-gradient(circle at 78% 22%, rgba(16, 185, 129, 0.05), transparent 35%),
+    radial-gradient(circle at 50% 78%, rgba(234, 179, 8, 0.05), transparent 45%);
+  --navy: #f1f5f9;
+  --navy-deep: #0b1121;
   --soft-blue: #3b82f6;
 }
 
