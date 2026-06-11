@@ -1,10 +1,17 @@
 // src/lib/api.ts
 import { getToken } from "./auth";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5050";
-
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const handleRes = async (res: Response) => {
   if (!res.ok) {
+    if (res.status === 401 || res.status === 403) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('valid_firebase_token');
+        localStorage.removeItem('valid_user');
+        localStorage.removeItem('valid_role');
+        window.location.href = '/login';
+      }
+    }
     let errorMessage = `Request failed with status ${res.status}`;
     try {
       const errorData = await res.json();

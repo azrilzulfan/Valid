@@ -25,27 +25,45 @@ export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+    setIsLoading(true);
     try {
       const result = await signInWithEmailAndPassword(firebaseAuth, email, password);
       const token = await result.user.getIdToken();
+      
+      // Temporary token for authApi.login to use
       localStorage.setItem('valid_firebase_token', token);
       
-      const response = await authApi.login();
-      localStorage.setItem('valid_user', JSON.stringify(response.user));
-      localStorage.setItem('valid_role', response.user.role);
-      
-      if (response.user.role === 'reviewer' || response.user.role === 'verifier') {
-        navigate({ to: '/pro/dashboard' as any });
-      } else {
-        navigate({ to: '/dashboard' });
+      try {
+        const response = await authApi.login();
+        localStorage.setItem('valid_user', JSON.stringify(response.user));
+        localStorage.setItem('valid_role', response.user.role);
+        
+        if (response.user.role === 'reviewer' || response.user.role === 'verifier') {
+          navigate({ to: '/pro/dashboard' as any });
+        } else {
+          navigate({ to: '/dashboard' });
+        }
+      } catch (loginErr) {
+        // If the backend doesn't recognize the user, clear the token and throw
+        localStorage.removeItem('valid_firebase_token');
+        throw loginErr;
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Gagal masuk. Cek kembali email dan password Anda.");
+      if (err.message && err.message.includes('User tidak ditemukan')) {
+         setError("Akun belum lengkap di database. Silakan daftar ulang dengan email ini.");
+      } else {
+         setError("Email atau password salah.");
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -75,6 +93,11 @@ export function Login() {
 
               {/* Form */}
               <form onSubmit={handleLogin}>
+                {error && (
+                  <div className="mb-4 bg-red-100 dark:bg-red-900/30 border-[2px] border-red-500 text-red-600 dark:text-red-400 p-3 rounded-xl text-xs font-bold text-center">
+                    {error}
+                  </div>
+                )}
                 <div className="mb-5">
                   <label className="block text-[11px] uppercase tracking-wider font-black text-[var(--text-muted)] mb-2">Email</label>
                   <input 
@@ -114,9 +137,10 @@ export function Login() {
 
                 <button 
                   type="submit"
-                  className="w-full inline-flex items-center justify-center gap-3 rounded-2xl py-4 font-black uppercase text-sm tracking-wider text-white transition-all duration-300 border-[2.5px] border-slate-900 shadow-[4px_4px_0px_#0f172a] hover:-translate-y-1 hover:shadow-[6px_6px_0px_#0f172a] bg-blue-600"
+                  disabled={isLoading}
+                  className="w-full inline-flex items-center justify-center gap-3 rounded-2xl py-4 font-black uppercase text-sm tracking-wider text-white transition-all duration-300 border-[2.5px] border-slate-900 shadow-[4px_4px_0px_#0f172a] hover:-translate-y-1 hover:shadow-[6px_6px_0px_#0f172a] bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Masuk →
+                  {isLoading ? 'Memuat...' : 'Masuk →'}
                 </button>
               </form>
 

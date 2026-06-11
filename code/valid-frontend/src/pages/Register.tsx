@@ -33,7 +33,7 @@ export function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [sertifikat, setSertifikat] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const handleNext = () => setStep(2);
@@ -44,6 +44,7 @@ export function Register() {
   const handleSubmit = async () => {
     setIsLoading(true);
     let firebaseUser = null;
+    setError(null);
     try {
       const result = await createUserWithEmailAndPassword(firebaseAuth, email, password);
       firebaseUser = result.user;
@@ -61,7 +62,7 @@ export function Register() {
       localStorage.setItem("valid_role", response.user.role);
 
       navigate({ to: "/dashboard" });
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
 
       if (firebaseUser) {
@@ -73,7 +74,11 @@ export function Register() {
         }
       }
 
-      alert("Pendaftaran gagal. Silakan coba lagi.");
+      if (err.code === 'auth/email-already-in-use') {
+        setError("Email sudah terdaftar. Silakan gunakan email lain atau masuk.");
+      } else {
+        setError("Pendaftaran gagal. Silakan coba lagi.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -165,16 +170,23 @@ export function Register() {
 
             {/* STEP 3: Confirmation */}
             {step === 3 && (
-              <RegisterStepConfirmation
-                slideVariants={slideVariants}
-                role={role}
-                nama={nama}
-                email={email}
-                sertifikat={sertifikat}
-                isLoading={isLoading}
-                onBack={handleBackToForm}
-                onSubmit={handleSubmit}
-              />
+              <div className="w-full">
+                {error && (
+                  <div className="mb-4 bg-red-100 dark:bg-red-900/30 border-[2px] border-red-500 text-red-600 dark:text-red-400 p-3 rounded-xl text-xs font-bold text-center">
+                    {error}
+                  </div>
+                )}
+                <RegisterStepConfirmation 
+                  slideVariants={slideVariants}
+                  role={role}
+                  nama={nama}
+                  email={email}
+                  sertifikat={sertifikat}
+                  isLoading={isLoading}
+                  onBack={handleBackToForm}
+                  onSubmit={handleSubmit}
+                />
+              </div>
             )}
           </AnimatePresence>
 

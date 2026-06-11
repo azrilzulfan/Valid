@@ -17,7 +17,7 @@ const containerVariants: Variants = {
 
 export function AuthLeftPanel() {
   return (
-    <div className="w-full md:w-[42%] relative flex flex-col justify-between h-[250px] md:h-full p-8 md:p-12 overflow-hidden shrink-0 bg-[var(--bg-b)] border-b-[3.5px] md:border-b-0 md:border-r-[3.5px] border-[var(--border-color)]">
+    <div className="w-full md:w-[42%] relative flex flex-col justify-center md:justify-between h-auto md:h-full p-6 md:p-12 overflow-hidden shrink-0 bg-[var(--card-bg)] border-b-[3.5px] md:border-b-0 md:border-r-[3.5px] border-[var(--border-color)]">
       
       {/* Background elements */}
       <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
@@ -28,9 +28,9 @@ export function AuthLeftPanel() {
       <div className="relative z-10 flex flex-col justify-between h-full">
         {/* top logo */}
         <motion.div initial="hidden" animate="visible" variants={containerVariants}>
-          <motion.div variants={itemVariants}>
-            <img src="/logo.png" alt="VALID Logo" className="h-[36px] md:h-[40px] object-contain hover:scale-105 transition-transform" />
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase leading-[0.9] tracking-tighter text-[var(--text-color)]" style={{ fontFamily: "var(--font-impact)" }}>
+          <motion.div variants={itemVariants} className="flex flex-col md:block items-center md:items-start text-center md:text-left">
+            <img src="/logo.png" alt="VALID Logo" className="h-[40px] md:h-[40px] object-contain hover:scale-105 transition-transform" />
+            <h1 className="hidden md:block text-3xl sm:text-4xl md:text-5xl font-black uppercase leading-[0.9] tracking-tighter text-[var(--text-color)] mt-6" style={{ fontFamily: "var(--font-impact)" }}>
               Buktikan<br />
               <span className="text-blue-600 dark:text-blue-400">Kemampuanmu</span>
             </h1>
