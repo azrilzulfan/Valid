@@ -1,8 +1,4 @@
-// HALAMAN: pages/Register
-// FUNGSI: Menangani proses pendaftaran akun (pencari kerja / profesional)
-// API YANG DIBUTUHKAN: authApi.register
-// DUMMY DATA: -
-
+// HALAMAN: src/pages/Register.tsx
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { AuthLeftPanel } from "../components/auth/AuthLeftPanel";
 import { useState } from "react";
@@ -13,6 +9,7 @@ import { authApi } from "../lib/api";
 import { RegisterStepChooseRole } from "../components/auth/RegisterStepChooseRole";
 import { RegisterStepFillDetails } from "../components/auth/RegisterStepFillDetails";
 import { RegisterStepConfirmation } from "../components/auth/RegisterStepConfirmation";
+import { saveToken, saveRole, saveUser } from "../lib/auth";
 
 const slideVariants: Variants = {
   enter: { x: 30, opacity: 0 },
@@ -42,38 +39,55 @@ export function Register() {
   const handleBackToForm = () => setStep(2);
 
   const handleSubmit = async () => {
+    if (password !== confirmPassword) {
+      alert("Password dan konfirmasi password tidak cocok!");
+      return;
+    }
+
     setIsLoading(true);
     let firebaseUser = null;
+
     try {
+      // 1. Buat Autentikasi di Firebase
       const result = await createUserWithEmailAndPassword(firebaseAuth, email, password);
       firebaseUser = result.user;
 
+      // 2. Ambil token dari firebase untuk menembus proteksi middleware backend
       const token = await result.user.getIdToken();
-      localStorage.setItem("valid_firebase_token", token);
+      saveToken(token);
 
+      // 3. Tembak Endpoint Registrasi di backend (POST /api/auth/register)
       const response = await authApi.register({
         uid: result.user.uid,
         email: email,
         displayName: nama,
         vocationField: role === "pro" ? "Profesional" : "Umum",
       });
-      localStorage.setItem("valid_user", JSON.stringify(response.user));
-      localStorage.setItem("valid_role", response.user.role);
 
-      navigate({ to: "/dashboard" });
-    } catch (err) {
-      console.error(err);
+      // 4. Simpan ke local storage
+      if (response.user) {
+        saveUser(response.user);
+        saveRole(response.user.role || "user");
+      }
 
+      alert("Registrasi berhasil!");
+      navigate({ to: "/dashboard" as any });
+    } catch (err: any) {
+      console.error("Kesalahan Register:", err);
+
+      // Mekanisme Rollback (Mencegah Orphan Account di Firebase)
       if (firebaseUser) {
         try {
           await deleteUser(firebaseUser);
-          console.log("Rollback: Akun Firebase berhasil dihapus karena backend gagal.");
+          console.log(
+            "Rollback: Akun Firebase telah dibersihkan karena backend gagal membuat profil.",
+          );
         } catch (rollbackErr) {
           console.error("Gagal melakukan rollback akun Firebase:", rollbackErr);
         }
       }
 
-      alert("Pendaftaran gagal. Silakan coba lagi.");
+      alert(err.message || "Pendaftaran gagal. Silakan coba lagi nanti.");
     } finally {
       setIsLoading(false);
     }
@@ -86,50 +100,21 @@ export function Register() {
       <AuthLeftPanel />
 
       {/* RIGHT PANEL */}
-      <div className="w-full md:w-[58%] flex flex-col h-full bg-[var(--bg-a)] relative overflow-y-auto">
-        {/* Progress Bar & Dots */}
+      <div className="w-full md:w-[58%] flex flex-col h-full bg-[var(--bg-a)] overflow-y-auto relative">
+        {/* Progress Bar */}
         <div className="w-full px-8 pt-8 md:px-16 md:pt-12 max-w-[500px] mx-auto shrink-0">
           <div className="relative w-full h-[6px] bg-[var(--card-bg)] border-[2px] border-[var(--border-color)] rounded-full overflow-hidden shadow-[2px_2px_0px_var(--shadow-color)]">
-            <div
+            <motion.div
               className="absolute top-0 left-0 h-full bg-blue-600 border-r-[2px] border-[var(--border-color)]"
-              style={{
-                width: progressWidth,
-                transition: "width 400ms cubic-bezier(0.34, 1.56, 0.64, 1)",
-              }}
+              initial={{ width: 0 }}
+              animate={{ width: progressWidth }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
             />
-          </div>
-          <div className="flex justify-between mt-4 px-2">
-            {[
-              { id: 1, label: "Pilih Peran" },
-              { id: 2, label: "Isi Data" },
-              { id: 3, label: "Konfirmasi" },
-            ].map((s) => {
-              const isActive = step === s.id;
-              const isPast = step > s.id;
-              return (
-                <div key={s.id} className="flex flex-col items-center gap-2 w-20">
-                  <div
-                    className="w-3 h-3 rounded-full border-[2px] transition-colors duration-300 shadow-[1px_1px_0px_var(--shadow-color)]"
-                    style={{
-                      background: isActive || isPast ? "#2563eb" : "var(--card-bg)",
-                      borderColor: "var(--border-color)",
-                    }}
-                  />
-                  <div
-                    className={`text-[9px] sm:text-[10px] uppercase tracking-widest font-black transition-colors duration-300 text-center ${isActive || isPast ? "text-blue-600 dark:text-blue-400" : "text-[var(--text-muted)]"}`}
-                  >
-                    {s.label}
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </div>
 
-        {/* Content Area */}
-        <div className="flex-1 flex flex-col pt-8 pb-12 px-6 md:px-12 w-full max-w-[500px] mx-auto relative overflow-y-auto">
+        <div className="flex-1 w-full max-w-[500px] mx-auto flex flex-col px-8 pb-12 pt-8">
           <AnimatePresence mode="wait">
-            {/* STEP 1: Choose Role */}
             {step === 1 && (
               <RegisterStepChooseRole
                 slideVariants={slideVariants}
@@ -139,7 +124,6 @@ export function Register() {
               />
             )}
 
-            {/* STEP 2: Fill Details */}
             {step === 2 && (
               <RegisterStepFillDetails
                 slideVariants={slideVariants}
@@ -163,7 +147,6 @@ export function Register() {
               />
             )}
 
-            {/* STEP 3: Confirmation */}
             {step === 3 && (
               <RegisterStepConfirmation
                 slideVariants={slideVariants}

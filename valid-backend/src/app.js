@@ -37,11 +37,17 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Rate Limiting — 100 request per 15 menit per IP
+// Rate Limiting
+const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: { error: 'Terlalu banyak request, coba lagi dalam 15 menit.' },
+  windowMs: isDevelopment ? 1 * 60 * 1000 : 15 * 60 * 1000,
+  max: isDevelopment ? 1000 : 100,
+
+  message: {
+    error: 'Terlalu banyak request dari IP Anda, silakan coba lagi nanti.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use('/api/', limiter);
 
