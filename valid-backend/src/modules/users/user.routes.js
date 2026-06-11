@@ -3,7 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const { verifyToken } = require('../../middleware/auth');
-const { getUserProfile, updateUserProfile, getUserActivity } = require('./user.controller');
+const { getUserProfile, updateUserProfile, getUserActivity, getAdminUserList, suspendUser, unsuspendUser, getAdminUserDetail } = require('./user.controller');
 
 /**
  * @swagger
@@ -74,5 +74,11 @@ router.put('/profile', verifyToken, updateUserProfile);
  *         description: Riwayat aktivitas berhasil diambil
  */
 router.get('/activity', verifyToken, getUserActivity);
+
+// Admin Routes
+router.get('/admin/list', verifyToken, getAdminUserList);
+router.get('/admin/detail/:uid', verifyToken, getAdminUserDetail);
+router.put('/admin/suspend/:uid', verifyToken, suspendUser);
+router.put('/admin/unsuspend/:uid', verifyToken, unsuspendUser);
 
 module.exports = router;

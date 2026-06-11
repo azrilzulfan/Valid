@@ -209,4 +209,44 @@ const handleMidtransWebhook = async (req, res, next) => {
   }
 };
 
-module.exports = { createPayment, getPaymentStatus, getMyPayments, handleMidtransWebhook };
+// Helper cek apakah user adalah admin
+const requireAdmin = async (uid) => {
+  const userSnap = await db.collection('users').doc(uid).get();
+  if (!userSnap.exists || userSnap.data().role !== 'admin') {
+    const err = new Error('Akses ditolak. Hanya admin yang dapat melakukan aksi ini.');
+    err.statusCode = 403;
+    throw err;
+  }
+};
+
+// Ambil semua transaksi/pembayaran seluruh platform (admin only)
+const getAdminTransactions = async (req, res, next) => {
+  try {
+    await requireAdmin(req.user.uid);
+    const snapshot = await db.collection('payments').orderBy('createdAt', 'desc').get();
+    const payments = [];
+    for (const doc of snapshot.docs) {
+      const data = doc.data();
+      const [candidateSnap, verifierSnap] = await Promise.all([
+        db.collection('users').doc(data.candidateUid).get(),
+        db.collection('users').doc(data.verifierUid).get()
+      ]);
+      payments.push({
+        ...data,
+        candidateName: candidateSnap.exists ? candidateSnap.data().displayName : 'Kandidat',
+        verifierName: verifierSnap.exists ? verifierSnap.data().displayName : 'Verifikator'
+      });
+    }
+    res.json({ payments });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { 
+  createPayment, 
+  getPaymentStatus, 
+  getMyPayments, 
+  handleMidtransWebhook, 
+  getAdminTransactions 
+};

@@ -5,7 +5,8 @@ const router = express.Router();
 const { verifyToken } = require('../../middleware/auth');
 const {
   createPayment, getPaymentStatus,
-  getMyPayments, handleMidtransWebhook
+  getMyPayments, handleMidtransWebhook,
+  getAdminTransactions
 } = require('./payment.controller');
 
 /**
@@ -95,5 +96,8 @@ router.get('/my', verifyToken, getMyPayments);
  *         description: Webhook diterima
  */
 router.post('/webhook', handleMidtransWebhook);
+
+// Admin Routes
+router.get('/admin/transactions', verifyToken, getAdminTransactions);
 
 module.exports = router;
