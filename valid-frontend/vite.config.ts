@@ -3,7 +3,6 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import react from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 import tailwindcss from "@tailwindcss/vite";
-import { cloudflare } from "@cloudflare/vite-plugin";
 
 export default defineConfig(({ command }) => ({
   optimizeDeps: {
@@ -15,9 +14,9 @@ export default defineConfig(({ command }) => ({
   },
   plugins: [
     tsconfigPaths(),
-    command === "build" ? cloudflare({ viteEnvironment: { name: "ssr" } }) : undefined,
     tanstackStart({
       server: { entry: "server" },
+      preset: "vercel",
     }),
     react(),
     tailwindcss(),
