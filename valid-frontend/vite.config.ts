@@ -17,6 +17,7 @@ export default defineConfig(({ command }) => ({
     tsconfigPaths(),
     tanstackStart({
       server: { entry: "server" },
+      preset: "vercel",
     }),
     nitro(),
     react(),
