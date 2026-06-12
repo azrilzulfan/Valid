@@ -1,6 +1,6 @@
 // HALAMAN: C:\laragon\www\valid-react\src\pages\ProDashboard.tsx
 // FUNGSI: Komponen/Halaman Beranda Verifikator Berbasis Data Riil Backend
-// API YANG DIBUTUHKAN: dashboardApi.getReviewerDashboard(), portfolioApi.getPendingReviews()
+// API YANG DIBUTUHKAN: dashboardApi.getReviewerDashboard(), portfolioApi.getAssignedToMe()
 
 import { motion, Variants } from "framer-motion";
 import {
@@ -10,7 +10,6 @@ import {
   Coins,
   LogOut,
   ChevronRight,
-  Activity,
   Clock,
   CheckCircle2,
   MoreHorizontal,
@@ -36,38 +35,79 @@ export function ProDashboard() {
   const [stats, setStats] = useState<any>(null);
   const [requests, setRequests] = useState<any[]>([]);
 
+  const [calculatedTrend, setCalculatedTrend] = useState<any>({
+    senin: 0,
+    selasa: 0,
+    rabu: 0,
+    kamis: 0,
+    jumat: 0,
+    sabtu: 0,
+    minggu: 0,
+  });
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [dashRes, pendRes] = await Promise.all([
+        const [dashRes, assignedRes] = await Promise.all([
           dashboardApi.getReviewerDashboard(),
-          portfolioApi.getPendingReviews(),
+          portfolioApi.getAssignedToMe(),
         ]);
 
-        // Menyesuaikan penempatan data stats berdasarkan respons backend
         const statsData = dashRes?.stats || dashRes;
         setStats(statsData);
 
-        // Gabungkan pending requests dengan recent reviews untuk tab "Selesai"
-        const pending = (pendRes?.portfolios || pendRes || []).map((p: any) => ({
-          id: p.portfolioId || p.id,
-          name: p.title || p.candidateName || "No Title",
-          role: p.vocationField || p.category || "General",
-          date: p.submittedAt ? new Date(p.submittedAt).toLocaleDateString() : "-",
-          status: "Menunggu",
-        }));
+        const assigned = assignedRes?.portfolios || [];
 
-        const completed = (statsData?.recentReviews || []).map((p: any) => ({
-          id: p.portfolioId || p.id,
-          name: p.title || p.candidateName || "No Title",
-          role: p.vocationField || p.category || "General",
-          date: p.reviewedAt ? new Date(p.reviewedAt).toLocaleDateString() : "-",
-          status: "Selesai",
-          score: p.myScore || p.score,
-        }));
+        const pending = assigned
+          .filter((p: any) => p.status === "under_review")
+          .map((p: any) => ({
+            id: p.portfolioId,
+            name: p.title || "No Title",
+            role: p.vocationField || "General",
+            date: p.assignedAt ? new Date(p.assignedAt).toLocaleDateString() : "-",
+            status: "Menunggu",
+          }));
+
+        const completed = assigned
+          .filter((p: any) => p.status === "approved")
+          .map((p: any) => ({
+            id: p.portfolioId,
+            name: p.title || "No Title",
+            role: p.vocationField || "General",
+            date: p.verifierReview?.reviewedAt
+              ? new Date(p.verifierReview.reviewedAt).toLocaleDateString()
+              : "-",
+            status: "Selesai",
+            score: p.verifiedScore,
+          }));
 
         setRequests([...pending, ...completed]);
+
+        const localTrend = {
+          senin: 0,
+          selasa: 0,
+          rabu: 0,
+          kamis: 0,
+          jumat: 0,
+          sabtu: 0,
+          minggu: 0,
+        };
+        const dayMappingIndo = ["minggu", "senin", "selasa", "rabu", "kamis", "jumat", "sabtu"];
+
+        assigned.forEach((p: any) => {
+          const dateString = p.verifierReview?.reviewedAt || p.assignedAt;
+          if (dateString) {
+            const logDate = new Date(dateString);
+            const diffTime = Math.abs(new Date().getTime() - logDate.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (diffDays <= 7) {
+              const dayName = dayMappingIndo[logDate.getDay()];
+              (localTrend as any)[dayName]++;
+            }
+          }
+        });
+        setCalculatedTrend(localTrend);
       } catch (err) {
         console.error("Gagal mengambil data dashboard pro:", err);
       } finally {
@@ -82,26 +122,53 @@ export function ProDashboard() {
     navigate({ to: "/login" });
   };
 
-  // Menghitung tinggi relatif grafik tren berdasarkan data riil (asumsi nilai maksimal grafik = 20)
+  const getTrendVal = (keyIndo: string, keyEng: string, keyShort: string) => {
+    if (!stats?.weeklyTrend) return calculatedTrend[keyIndo] || 0;
+    return (
+      stats.weeklyTrend[keyIndo] ??
+      stats.weeklyTrend[keyEng] ??
+      stats.weeklyTrend[keyShort] ??
+      stats.weeklyTrend[keyEng.toLowerCase()] ??
+      calculatedTrend[keyIndo] ??
+      0
+    );
+  };
+
+  const dayValues = [
+    getTrendVal("senin", "Monday", "Mon"),
+    getTrendVal("selasa", "Tuesday", "Tue"),
+    getTrendVal("rabu", "Wednesday", "Wed"),
+    getTrendVal("kamis", "Thursday", "Thu"),
+    getTrendVal("jumat", "Friday", "Fri"),
+    getTrendVal("sabtu", "Saturday", "Sat"),
+    getTrendVal("minggu", "Sunday", "Sun"),
+  ];
+
+  const totalWeeklyReviews = dayValues.reduce((a, b) => a + b, 0);
+
+  // FIX SCALE 1: Menentukan pembagi minimum bernilai 5 agar grafik tidak melonjak penuh jika data masih kecil
+  const maxWeeklyVal = Math.max(...dayValues, 5);
+
   const getBarHeight = (value: number) => {
-    return `${Math.min((value / 20) * 100, 100)}%`;
+    const targetVal = Number(value) || 0;
+    if (targetVal === 0) return "0px"; // Hari tanpa data tidak boleh naik ke atas sama sekali
+    return `${Math.min((targetVal / maxWeeklyVal) * 100, 100)}%`;
   };
 
   const weeklyTrendData = [
-    { day: "Sen", h: getBarHeight(stats?.weeklyTrend?.senin || 0) },
-    { day: "Sel", h: getBarHeight(stats?.weeklyTrend?.selasa || 0) },
-    { day: "Rab", h: getBarHeight(stats?.weeklyTrend?.rabu || 0) },
-    { day: "Kam", h: getBarHeight(stats?.weeklyTrend?.kamis || 0) },
-    { day: "Jum", h: getBarHeight(stats?.weeklyTrend?.jumat || 0) },
-    { day: "Sab", h: getBarHeight(stats?.weeklyTrend?.sabtu || 0) },
-    { day: "Min", h: getBarHeight(stats?.weeklyTrend?.minggu || 0) },
+    { day: "Sen", h: getBarHeight(dayValues[0]), val: dayValues[0] },
+    { day: "Sel", h: getBarHeight(dayValues[1]), val: dayValues[1] },
+    { day: "Rab", h: getBarHeight(dayValues[2]), val: dayValues[2] },
+    { day: "Kam", h: getBarHeight(dayValues[3]), val: dayValues[3] },
+    { day: "Jum", h: getBarHeight(dayValues[4]), val: dayValues[4] },
+    { day: "Sab", h: getBarHeight(dayValues[5]), val: dayValues[5] },
+    { day: "Min", h: getBarHeight(dayValues[6]), val: dayValues[6] },
   ];
 
   return (
     <div className="flex w-full h-screen bg-[var(--bg-b)] overflow-hidden text-[var(--text-color)] font-sans">
       {/* SIDEBAR */}
       <div className="fixed md:relative bottom-0 left-0 w-full md:w-[260px] h-[75px] md:h-screen bg-[var(--bg-a)] md:border-r-[3px] border-t-[3px] md:border-t-0 border-slate-900 flex md:flex-col z-50 md:z-auto transition-all shrink-0">
-        {/* TOP: Logo */}
         <div className="hidden md:flex pt-[24px] pb-[20px] px-[24px] border-b-[3px] border-slate-900 bg-yellow-400 items-center justify-between">
           <div className="flex items-center gap-2">
             <Star className="w-5 h-5 text-slate-900 fill-slate-900" />
@@ -115,7 +182,6 @@ export function ProDashboard() {
           <div className="w-[10px] h-[10px] bg-green-500 rounded-full border-[2px] border-slate-900"></div>
         </div>
 
-        {/* USER INFO */}
         <div className="hidden md:flex items-center gap-3 py-[20px] px-[24px] border-b-[3px] border-slate-900 bg-[var(--bg-b)]">
           <div className="w-[44px] h-[44px] rounded-[14px] border-[2.5px] border-slate-900 bg-purple-200 flex items-center justify-center shadow-[3px_3px_0px_var(--shadow-color)]">
             <span
@@ -141,7 +207,6 @@ export function ProDashboard() {
           </div>
         </div>
 
-        {/* NAV LINKS */}
         <div className="flex-1 flex md:flex-col flex-row w-full justify-around md:justify-start md:px-[16px] md:py-[24px] gap-0 md:gap-[10px] items-center md:items-stretch h-full overflow-y-auto">
           {[
             { icon: LayoutDashboard, label: "Beranda Pro", active: true, path: "/pro/dashboard" },
@@ -164,7 +229,7 @@ export function ProDashboard() {
                 strokeWidth={item.active ? 2.5 : 2}
               />
               <span
-                className={`text-[9px] md:text-[12px] uppercase tracking-wider ${item.active ? "font-black" : "font-bold"}`}
+                className={`text-[9px] md:text-[13px] uppercase tracking-wider ${item.active ? "font-black" : "font-bold"}`}
                 style={{ fontFamily: "var(--font-body)" }}
               >
                 {item.label}
@@ -173,7 +238,6 @@ export function ProDashboard() {
           ))}
         </div>
 
-        {/* BOTTOM: Logout */}
         <div className="hidden md:flex flex-col p-[24px] border-t-[3px] border-slate-900 bg-[var(--bg-b)]">
           <div
             onClick={handleLogout}
@@ -192,7 +256,6 @@ export function ProDashboard() {
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 h-[calc(100vh-75px)] md:h-screen overflow-y-auto relative pb-[100px] md:pb-[40px]">
-        {/* Decorative Grid Background */}
         <div
           className="absolute inset-0 z-0 pointer-events-none opacity-[0.03]"
           style={{
@@ -202,7 +265,7 @@ export function ProDashboard() {
         />
 
         <motion.div
-          className="p-[20px_16px] md:p-[40px_48px] max-w-[1200px] mx-auto relative z-10"
+          className="p-[20px_16px] md:p-[40px_48px] max-w-[1100px] mx-auto relative z-10"
           initial="hidden"
           animate="visible"
           transition={{ staggerChildren: 0.08 }}
@@ -214,11 +277,10 @@ export function ProDashboard() {
           {/* HEADER */}
           <motion.div variants={sectionVariants} className="mb-[40px]">
             <div
-              className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 dark:bg-yellow-950/50 border-[2.5px] border-slate-900 rounded-full font-black text-[10px] uppercase tracking-widest text-yellow-700 dark:text-yellow-400 mb-[16px] shadow-[2px_2px_0px_#0f172a]"
+              className="inline-flex px-3 py-1 bg-purple-100 border-[2.5px] border-slate-900 rounded-full font-black text-[10px] uppercase tracking-widest text-slate-900 mb-[16px] shadow-[2px_2px_0px_#0f172a]"
               style={{ fontFamily: "var(--font-body)" }}
             >
-              <Activity className="w-3.5 h-3.5 text-yellow-600 animate-pulse" /> MODE VERIFIKATOR
-              LISENSI
+              MODE PROFESIONAL
             </div>
             <h1
               className="font-black text-[36px] md:text-[52px] text-[var(--text-color)] leading-[0.9] tracking-tighter uppercase mb-2"
@@ -230,8 +292,8 @@ export function ProDashboard() {
               className="font-bold text-[14px] md:text-[16px] text-slate-400 max-w-[600px] leading-relaxed"
               style={{ fontFamily: "var(--font-body)" }}
             >
-              Kelola antrean penilaian portofolio tugas akhir talenta digital, berikan penilaian
-              terstandarisasi, dan kelola pendapatan koin Anda.
+              Kelola antrean portofolio yang ditugaskan kepada Anda, berikan penilaian terstruktur,
+              dan pantau rekam jejak verifikasi Anda.
             </p>
           </motion.div>
 
@@ -240,8 +302,7 @@ export function ProDashboard() {
             variants={sectionVariants}
             className="grid grid-cols-1 md:grid-cols-3 gap-[24px] mb-[40px]"
           >
-            {/* Card 1 */}
-            <div className="bg-yellow-300 border-[3px] border-slate-900 rounded-[1.5rem] p-[28px] shadow-[6px_6px_0px_#0f172a] hover:-translate-y-1 hover:shadow-[8px_8px_0px_#0f172a] transition-all duration-300">
+            <div className="bg-yellow-400 border-[3px] border-slate-900 rounded-[1.5rem] p-[28px] shadow-[6px_6px_0px_#0f172a] hover:-translate-y-1 hover:shadow-[8px_8px_0px_#0f172a] transition-all duration-300">
               <div className="flex justify-between items-start mb-4">
                 <div className="w-[48px] h-[48px] bg-white border-[3px] border-slate-900 rounded-[12px] flex items-center justify-center shadow-[3px_3px_0px_#0f172a]">
                   <Clock className="w-6 h-6 text-slate-900" />
@@ -257,11 +318,10 @@ export function ProDashboard() {
                 className="font-black text-[12px] text-slate-800 uppercase tracking-widest"
                 style={{ fontFamily: "var(--font-body)" }}
               >
-                Permintaan Menunggu
+                Ditugaskan & Menunggu
               </div>
             </div>
 
-            {/* Card 2 */}
             <div className="bg-[var(--bg-a)] border-[3px] border-slate-900 rounded-[1.5rem] p-[28px] shadow-[6px_6px_0px_var(--shadow-color)] hover:-translate-y-1 hover:shadow-[8px_8px_0px_var(--shadow-color)] transition-all duration-300">
               <div className="flex justify-between items-start mb-4">
                 <div className="w-[48px] h-[48px] bg-blue-100 border-[3px] border-slate-900 rounded-[12px] flex items-center justify-center shadow-[3px_3px_0px_var(--shadow-color)]">
@@ -272,21 +332,16 @@ export function ProDashboard() {
                 className="font-black text-[48px] text-[var(--text-color)] leading-[0.8] tracking-tighter mb-2"
                 style={{ fontFamily: "var(--font-impact)" }}
               >
-                {loading
-                  ? "-"
-                  : stats?.summary?.totalReviewsGiven ||
-                    stats?.totalReviewsGiven ||
-                    requests.filter((r) => r.status === "Selesai").length}
+                {loading ? "-" : stats?.profile?.totalReviews || stats?.totalReviews || 0}
               </div>
               <div
                 className="font-black text-[12px] text-slate-400 uppercase tracking-widest"
                 style={{ fontFamily: "var(--font-body)" }}
               >
-                Review Selesai
+                Total Portofolio Dinilai
               </div>
             </div>
 
-            {/* Card 3 */}
             <div className="bg-slate-900 text-white border-[3px] border-slate-900 rounded-[1.5rem] p-[28px] shadow-[6px_6px_0px_#FBBF24] hover:-translate-y-1 hover:shadow-[8px_8px_0px_#FBBF24] transition-all duration-300">
               <div className="flex justify-between items-start mb-4">
                 <div className="w-[48px] h-[48px] bg-slate-800 border-[3px] border-slate-700 rounded-[12px] flex items-center justify-center shadow-[3px_3px_0px_#000000]">
@@ -297,36 +352,33 @@ export function ProDashboard() {
                 className="font-black text-[48px] text-white leading-[0.8] tracking-tighter mb-2"
                 style={{ fontFamily: "var(--font-impact)" }}
               >
-                {loading ? "-" : stats?.totalEarnings || stats?.profile?.reputationPoints || 0}
+                {loading ? "-" : stats?.profile?.coins || stats?.coins || 0}
               </div>
               <div
                 className="font-black text-[12px] text-slate-400 uppercase tracking-widest"
                 style={{ fontFamily: "var(--font-body)" }}
               >
-                Total Koin Terkumpul
+                Saldo Koin Dompet
               </div>
             </div>
           </motion.div>
 
           {/* MAIN CONTENT SPLIT */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-[32px]">
-            {/* INCOMING REQUESTS (Left 2/3) */}
             <motion.div variants={sectionVariants} className="lg:col-span-2">
               <div className="flex justify-between items-end mb-[20px]">
                 <h2
                   className="font-black text-[24px] md:text-[28px] text-[var(--text-color)] uppercase tracking-tight"
                   style={{ fontFamily: "var(--font-impact)" }}
                 >
-                  PERMINTAAN REVIEW
+                  ANTREAN PORTOFOLIO
                 </h2>
-
-                {/* Tabs */}
                 <div className="hidden sm:flex bg-[var(--bg-a)] border-[2px] border-slate-900 rounded-lg p-1 shadow-[2px_2px_0px_#0f172a]">
                   {["Semua", "Menunggu", "Selesai"].map((tab) => (
                     <button
                       key={tab}
                       onClick={() => setActiveTab(tab)}
-                      className={`px-4 py-1.5 rounded-md font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === tab ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" : "text-slate-400 hover:text-[var(--text-color)]"}`}
+                      className={`px-4 py-1.5 rounded-md font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === tab ? "bg-slate-900 text-white" : "text-slate-400 hover:text-[var(--text-color)]"}`}
                       style={{ fontFamily: "var(--font-body)" }}
                     >
                       {tab}
@@ -342,10 +394,9 @@ export function ProDashboard() {
                       className="p-[40px] text-center font-black text-[14px] text-slate-400 uppercase tracking-widest"
                       style={{ fontFamily: "var(--font-body)" }}
                     >
-                      Memuat Data Permintaan...
+                      Memuat...
                     </div>
                   )}
-
                   {!loading &&
                     requests
                       .filter((req) => activeTab === "Semua" || req.status === activeTab)
@@ -360,7 +411,7 @@ export function ProDashboard() {
                                 className="font-black text-[20px] text-blue-600"
                                 style={{ fontFamily: "var(--font-impact)" }}
                               >
-                                {req.name?.charAt(0)}
+                                {req.name.charAt(0)}
                               </span>
                             </div>
                             <div>
@@ -443,7 +494,7 @@ export function ProDashboard() {
               </div>
             </motion.div>
 
-            {/* EARNINGS CHART (Right 1/3) */}
+            {/* EARNINGS CHART */}
             <motion.div variants={sectionVariants} className="lg:col-span-1">
               <h2
                 className="font-black text-[24px] md:text-[28px] text-[var(--text-color)] uppercase tracking-tight mb-[20px]"
@@ -463,25 +514,21 @@ export function ProDashboard() {
                   className="font-black text-[32px] text-[var(--text-color)] tracking-tighter mb-6"
                   style={{ fontFamily: "var(--font-impact)" }}
                 >
-                  +
-                  {stats?.weeklyTrend
-                    ? (Object.values(stats.weeklyTrend).reduce(
-                        (a: any, b: any) => a + b,
-                        0,
-                      ) as number)
-                    : 0}{" "}
-                  ULASAN
+                  +{totalWeeklyReviews} ULASAN
                 </div>
 
-                {/* Custom CSS Bar Chart */}
                 <div className="h-[180px] flex items-end justify-between gap-2 border-b-[2.5px] border-slate-900 pb-2 relative">
-                  {/* Grid Lines */}
                   <div className="absolute top-0 w-full border-t-[2px] border-dashed border-slate-200 dark:border-slate-800" />
                   <div className="absolute top-1/2 w-full border-t-[2px] border-dashed border-slate-200 dark:border-slate-800" />
 
-                  {/* Bars */}
                   {weeklyTrendData.map((bar, i) => (
-                    <div key={i} className="flex flex-col items-center gap-2 flex-1 z-10 group">
+                    <div
+                      key={i}
+                      className="flex flex-col items-center gap-2 flex-1 h-full justify-end z-10 group relative"
+                    >
+                      <div className="absolute bottom-full mb-1 bg-slate-900 text-white font-black text-[9px] px-1.5 py-0.5 rounded border border-slate-900 shadow-[1px_1px_0px_rgba(0,0,0,1)] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30">
+                        {bar.val}
+                      </div>
                       <div
                         className={`w-full max-w-[24px] border-[2.5px] border-slate-900 rounded-t-sm shadow-[2px_0px_0px_var(--shadow-color)] transition-all duration-500 group-hover:brightness-110 ${i === 6 ? "bg-yellow-400" : "bg-blue-600"}`}
                         style={{ height: bar.h }}
@@ -490,7 +537,6 @@ export function ProDashboard() {
                   ))}
                 </div>
 
-                {/* X Axis Labels */}
                 <div className="flex justify-between mt-2 px-1">
                   {weeklyTrendData.map((bar, i) => (
                     <span

@@ -1,6 +1,6 @@
 // HALAMAN: C:\laragon\www\valid-react\src\pages\ProReviewRoom.tsx
-// FUNGSI: Bilik pengujian penilai riil standar kriteria industri berbasis data API Backend
-// API YANG DIBUTUHKAN: portfolioApi.getPortfolioById(id) & portfolioApi.reviewPortfolio(id, payload)
+// FUNGSI: Bilik pengujian penilai riil standar kriteria industri berbasis data API Backend (Dual Mode: Review & View)
+// API YANG DIBUTUHKAN: portfolioApi.getPortfolioById(id) & portfolioApi.submitVerifierReview(id, payload)
 
 import { motion } from "framer-motion";
 import {
@@ -14,6 +14,8 @@ import {
   AlertCircle,
   Sparkles,
   User,
+  FileText,
+  ExternalLink,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "@tanstack/react-router";
@@ -29,36 +31,54 @@ export function ProReviewRoom() {
   const portfolioId = (params as any)?.id;
   const navigate = useNavigate();
 
+  // 🌟 PERBAIKAN: Deteksi status portofolio untuk mengunci form
+  const isReadOnly = data?.status === "approved";
+
   useEffect(() => {
     if (portfolioId) {
       portfolioApi
         .getPortfolioById(portfolioId)
-        .then((res) => setData(res.portfolio || res))
+        .then((res) => {
+          const portfolioData = res.portfolio || res;
+          setData(portfolioData);
+
+          // 🌟 PERBAIKAN: Jika sudah dinilai, tampilkan hasil review dari database ke form
+          if (portfolioData.status === "approved" && portfolioData.verifierReview) {
+            const overallScore = portfolioData.verifiedScore || 0;
+            // Konversi skor 100 ke skala 5 bintang
+            setRating(Math.round(overallScore / 20));
+            setFeedback(portfolioData.verifierReview.feedback || "");
+          }
+        })
         .catch((err) => console.error("Gagal mengambil data proyek uji:", err));
     }
   }, [portfolioId]);
 
   const handleSubmit = async () => {
-    if (!portfolioId || rating === 0 || !feedback.trim()) return;
+    if (!portfolioId || rating === 0 || !feedback.trim() || isReadOnly) return;
     try {
       setSubmitting(true);
-      await portfolioApi.reviewPortfolio(portfolioId, {
+
+      await portfolioApi.submitVerifierReview(portfolioId, {
         technicalAccuracy: rating * 20,
         processDocumentation: rating * 20,
         originality: rating * 20,
         feedback: feedback || "Tidak ada catatan evaluasi khusus",
       });
+
       navigate({ to: "/pro/dashboard" });
     } catch (err) {
-      console.error("Gagal mengirim ulasan final:", err);
-      navigate({ to: "/pro/dashboard" }); // Fallback perlindungan state router
+      console.error("Gagal mengirim ulasan final verifikator:", err);
+      navigate({ to: "/pro/dashboard" });
     } finally {
       setSubmitting(false);
     }
   };
 
-  const candidateName = data?.user?.displayName || data?.candidateName || "Memuat...";
-  const vocationField = data?.user?.vocationField || data?.category || "Umum";
+  const candidateName =
+    data?.user?.displayName || data?.candidateName || data?.displayName || "Memuat...";
+  const vocationField =
+    data?.user?.vocationField || data?.vocationField || data?.category || "Umum";
 
   return (
     <div className="flex flex-col w-full min-h-screen bg-[var(--bg-b)] text-[var(--text-color)] font-sans transition-colors duration-300">
@@ -88,15 +108,28 @@ export function ProReviewRoom() {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-yellow-100 dark:bg-yellow-950/40 border-[2px] border-yellow-500 rounded-full">
-            <Clock className="w-4 h-4 text-yellow-600 animate-pulse" />
-            <span
-              className="font-black text-[10px] text-yellow-700 dark:text-yellow-400 uppercase tracking-widest"
-              style={{ fontFamily: "var(--font-body)" }}
-            >
-              Tenggat Penilaian: Aktif
-            </span>
-          </div>
+          {/* 🌟 PERBAIKAN: Indikator status adaptif */}
+          {isReadOnly ? (
+            <div className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-green-100 dark:bg-green-950/40 border-[2px] border-green-500 rounded-full">
+              <CheckCircle2 className="w-4 h-4 text-green-600" />
+              <span
+                className="font-black text-[10px] text-green-700 dark:text-green-400 uppercase tracking-widest"
+                style={{ fontFamily: "var(--font-body)" }}
+              >
+                Status: Selesai Dinilai
+              </span>
+            </div>
+          ) : (
+            <div className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-yellow-100 dark:bg-yellow-950/40 border-[2px] border-yellow-500 rounded-full">
+              <Clock className="w-4 h-4 text-yellow-600 animate-pulse" />
+              <span
+                className="font-black text-[10px] text-yellow-700 dark:text-yellow-400 uppercase tracking-widest"
+                style={{ fontFamily: "var(--font-body)" }}
+              >
+                Tenggat Penilaian: Aktif
+              </span>
+            </div>
+          )}
           <ThemeToggle />
         </div>
       </div>
@@ -122,10 +155,10 @@ export function ProReviewRoom() {
                   className="font-bold text-[12px] md:text-[13px] text-slate-400 uppercase tracking-widest mb-3"
                   style={{ fontFamily: "var(--font-body)" }}
                 >
-                  {vocationField} • {data?.user?.location || "Terregistrasi"}
+                  {vocationField} • {data?.user?.location || data?.location || "Terregistrasi"}
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {(data?.user?.skills || data?.tags || ["Talenta Digital"]).map(
+                  {(data?.user?.skills || data?.skills || data?.tags || ["Talenta Digital"]).map(
                     (skill: string) => (
                       <span
                         key={skill}
@@ -139,17 +172,17 @@ export function ProReviewRoom() {
                 </div>
               </div>
             </div>
-            {data?.user?.bio && (
+            {(data?.user?.bio || data?.bio) && (
               <p
                 className="mt-5 font-bold text-[13px] text-slate-400 italic leading-relaxed border-t-[2.5px] border-dashed border-slate-200 dark:border-slate-800 pt-4"
                 style={{ fontFamily: "var(--font-body)" }}
               >
-                "{data.user.bio}"
+                "{data?.user?.bio || data?.bio}"
               </p>
             )}
           </div>
 
-          {/* AI Score Overview (Drawn from real analysis weights inside payload if existing) */}
+          {/* AI Score Overview */}
           <div className="bg-blue-600 text-white rounded-[1.5rem] border-[3px] border-slate-900 shadow-[6px_6px_0px_#0f172a] p-[24px]">
             <div className="flex justify-between items-center mb-[20px]">
               <div className="flex items-center gap-2">
@@ -158,21 +191,32 @@ export function ProReviewRoom() {
                   className="font-black text-[16px] uppercase tracking-wider"
                   style={{ fontFamily: "var(--font-impact)" }}
                 >
-                  REKOMENDASI DIKTI AI ASSISTANT
+                  REKOMENDASI DIKTI AI ASSISTANT (HASIL INTERVIEW)
                 </h3>
               </div>
               <div
                 className="px-3 py-1 bg-slate-900 border-[2px] border-black text-white rounded-full font-black text-[10px] uppercase tracking-widest"
                 style={{ fontFamily: "var(--font-body)" }}
               >
-                Skor Awal: {data?.aiScore || data?.initialScore || 75}/100
+                Skor Wawancara:{" "}
+                {data?.aiInterview?.overallScore || data?.aiScore || data?.initialScore || 0}/100
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-[16px]">
               {[
-                { label: "Akurasi Teknis", score: data?.aiMetrics?.accuracy || 80 },
-                { label: "Dokumentasi Proses", score: data?.aiMetrics?.documentation || 70 },
-                { label: "Keaslian Kode", score: data?.aiMetrics?.originality || 85 },
+                {
+                  label: "Kelancaran Verbal & Vokal",
+                  score: data?.aiInterview?.vocalConfidence || data?.aiMetrics?.accuracy || 0,
+                },
+                {
+                  label: "Stabilitas Emosi / Cognitive Load",
+                  score:
+                    data?.aiInterview?.cognitiveStability || data?.aiMetrics?.documentation || 0,
+                },
+                {
+                  label: "Akurasi Jawaban Teknis",
+                  score: data?.aiInterview?.technicalAccuracy || data?.aiMetrics?.originality || 0,
+                },
               ].map((m, i) => (
                 <div key={i} className="flex flex-col">
                   <div className="flex justify-between items-center mb-1.5">
@@ -236,15 +280,46 @@ export function ProReviewRoom() {
                       {proj.role || vocationField} • {proj.year || new Date().getFullYear()}
                     </p>
                     <p
-                      className="font-bold text-[13px] text-slate-400 leading-relaxed"
+                      className="font-bold text-[13px] text-slate-400 leading-relaxed mb-4"
                       style={{ fontFamily: "var(--font-body)" }}
                     >
                       {proj.description ||
                         "Tidak tersedia deksripsi tambahan dari berkas mahasiswa."}
                     </p>
 
+                    {/* Lampiran Berkas Cloudinary */}
+                    {proj.fileUrls && proj.fileUrls.length > 0 && (
+                      <div className="mt-4 pt-4 border-t-[2px] border-dashed border-slate-300 dark:border-slate-800">
+                        <div className="font-black text-[10px] text-slate-400 uppercase tracking-widest mb-2.5">
+                          Lampiran Berkas ({proj.fileUrls.length}):
+                        </div>
+                        <div className="grid grid-cols-1 gap-2">
+                          {proj.fileUrls.map((file: any, fIdx: number) => (
+                            <a
+                              key={fIdx}
+                              href={file.fileUrl}
+                              target="_blank"
+                              with-credentials="true"
+                              rel="noreferrer"
+                              className="flex items-center justify-between p-3 bg-[var(--bg-a)] border-[2px] border-slate-900 rounded-lg hover:-translate-y-0.5 transition-all shadow-[2px_2px_0px_var(--shadow-color)] group"
+                            >
+                              <div className="flex items-center gap-2.5 overflow-hidden">
+                                <FileText className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                                <span className="font-bold text-[12px] text-[var(--text-color)] truncate">
+                                  {file.fileName || `Dokumen_Lampiran_${fIdx + 1}`}
+                                </span>
+                              </div>
+                              <span className="font-black text-[9px] uppercase tracking-widest text-blue-600 group-hover:underline flex items-center gap-1 shrink-0">
+                                Buka Berkas <ExternalLink className="w-3 h-3" />
+                              </span>
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {proj.repositoryUrl || proj.link ? (
-                      <div className="mt-4 pt-3 border-t border-dashed border-slate-700">
+                      <div className="mt-4 pt-3 border-t border-dashed border-slate-300 dark:border-slate-800">
                         <a
                           href={proj.repositoryUrl || proj.link}
                           target="_blank"
@@ -262,7 +337,7 @@ export function ProReviewRoom() {
           </div>
         </div>
 
-        {/* RIGHT PANEL: Professional Feedback Form Slider/Box */}
+        {/* RIGHT PANEL: Professional Feedback Form */}
         <div className="flex-1 lg:max-w-[520px] flex flex-col bg-[var(--bg-a)] rounded-[1.5rem] border-[3px] border-slate-900 shadow-[8px_8px_0px_var(--shadow-color)] overflow-hidden">
           <div className="bg-yellow-400 p-[24px] border-b-[3px] border-slate-900">
             <h2
@@ -275,7 +350,9 @@ export function ProReviewRoom() {
               className="font-bold text-[12px] text-slate-800 tracking-wider mt-1"
               style={{ fontFamily: "var(--font-body)" }}
             >
-              Tentukan bobot kriteria standardisasi industri nasional secara objektif.
+              {isReadOnly
+                ? "Evaluasi ini bersifat arsip permanen dan telah divalidasi oleh sistem."
+                : "Tentukan bobot kriteria standardisasi industri nasional secara objektif."}
             </p>
           </div>
 
@@ -293,11 +370,22 @@ export function ProReviewRoom() {
                   <button
                     key={star}
                     type="button"
-                    onClick={() => setRating(star)}
-                    className="w-[48px] h-[48px] rounded-xl border-[2.5px] border-slate-900 flex items-center justify-center hover:-translate-y-1 hover:shadow-[3px_3px_0px_var(--shadow-color)] transition-all bg-[var(--bg-b)]"
+                    // 🌟 PERBAIKAN: Kunci aksi tombol jika Read-Only
+                    onClick={() => !isReadOnly && setRating(star)}
+                    disabled={isReadOnly}
+                    className={`w-[48px] h-[48px] rounded-xl border-[2.5px] border-slate-900 flex items-center justify-center transition-all bg-[var(--bg-b)]
+                      ${
+                        isReadOnly
+                          ? "cursor-not-allowed opacity-80"
+                          : "hover:-translate-y-1 hover:shadow-[3px_3px_0px_var(--shadow-color)] cursor-pointer"
+                      }`}
                   >
                     <Star
-                      className={`w-6 h-6 ${rating >= star ? "fill-yellow-400 text-yellow-500" : "text-slate-300 dark:text-slate-700"}`}
+                      className={`w-6 h-6 ${
+                        rating >= star
+                          ? "fill-yellow-400 text-yellow-500"
+                          : "text-slate-300 dark:text-slate-700"
+                      }`}
                     />
                   </button>
                 ))}
@@ -315,36 +403,57 @@ export function ProReviewRoom() {
               <textarea
                 value={feedback}
                 onChange={(e) => setFeedback(e.target.value)}
-                className="w-full min-h-[140px] bg-[var(--bg-b)] border-[2.5px] border-slate-900 rounded-xl p-4 font-bold text-[13px] text-[var(--text-color)] focus:outline-none focus:shadow-[4px_4px_0px_var(--shadow-color)] transition-all resize-none"
+                // 🌟 PERBAIKAN: Kunci teks input jika Read-Only
+                disabled={isReadOnly}
+                readOnly={isReadOnly}
+                className={`w-full min-h-[140px] bg-[var(--bg-b)] border-[2.5px] border-slate-900 rounded-xl p-4 font-bold text-[13px] text-[var(--text-color)] transition-all resize-none
+                  ${
+                    isReadOnly
+                      ? "cursor-not-allowed opacity-80"
+                      : "focus:outline-none focus:shadow-[4px_4px_0px_var(--shadow-color)]"
+                  }`}
                 placeholder="- Tulis evaluasi logismu terkait implementasi standar industri di sini..."
                 style={{ fontFamily: "var(--font-body)" }}
               />
             </div>
 
-            {/* Disclaimer Warning Box */}
-            <div className="bg-yellow-950/40 border-[2px] border-dashed border-yellow-600 p-3 rounded-xl flex items-start gap-3 mt-2">
-              <AlertCircle className="w-5 h-5 text-yellow-500 shrink-0 mt-0.5" />
-              <p
-                className="font-bold text-[10px] text-yellow-500 leading-relaxed uppercase tracking-wider"
-                style={{ fontFamily: "var(--font-body)" }}
-              >
-                Dengan menekan Kirim, lembar penilaian akan dikunci secara permanen di basis data
-                kandidat dan koin Anda akan bertambah secara otomatis.
-              </p>
-            </div>
+            {/* Disclaimer Warning Box (Hanya Tampil Jika Belum Direview) */}
+            {!isReadOnly && (
+              <div className="bg-yellow-950/40 border-[2px] border-dashed border-yellow-600 p-3 rounded-xl flex items-start gap-3 mt-2">
+                <AlertCircle className="w-5 h-5 text-yellow-500 shrink-0 mt-0.5" />
+                <p
+                  className="font-bold text-[10px] text-yellow-500 leading-relaxed uppercase tracking-wider"
+                  style={{ fontFamily: "var(--font-body)" }}
+                >
+                  Dengan menekan Kirim, lembar penilaian akan dikunci secara permanen di basis data
+                  kandidat dan koin Anda akan bertambah secara otomatis.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Action Submission Buttons */}
           <div className="p-[24px] border-t-[3px] border-slate-900 bg-[var(--bg-b)]">
-            <button
-              onClick={handleSubmit}
-              disabled={submitting || rating === 0 || !feedback.trim()}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-500 disabled:cursor-not-allowed text-white rounded-[1rem] px-[24px] py-[16px] font-black text-[14px] uppercase tracking-widest border-[3px] border-slate-900 shadow-[4px_4px_0px_#000] hover:shadow-[6px_6px_0px_#000] hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
-              style={{ fontFamily: "var(--font-body)" }}
-            >
-              <Send className="w-5 h-5" />{" "}
-              {submitting ? "Mengamankan Data..." : "Kirim Ulasan Resmi"}
-            </button>
+            {isReadOnly ? (
+              // 🌟 PERBAIKAN: Tombol Statis jika form sudah dalam mode Read-Only
+              <div
+                className="w-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-[1rem] px-[24px] py-[16px] font-black text-[14px] uppercase tracking-widest border-[3px] border-slate-900 shadow-[4px_4px_0px_var(--shadow-color)] flex items-center justify-center gap-2 cursor-not-allowed"
+                style={{ fontFamily: "var(--font-body)" }}
+              >
+                <CheckCircle2 className="w-5 h-5" /> EVALUASI TERKUNCI (READ-ONLY)
+              </div>
+            ) : (
+              // Tombol Aktif jika form belum disubmit
+              <button
+                onClick={handleSubmit}
+                disabled={submitting || rating === 0 || !feedback.trim()}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-500 disabled:cursor-not-allowed text-white rounded-[1rem] px-[24px] py-[16px] font-black text-[14px] uppercase tracking-widest border-[3px] border-slate-900 shadow-[4px_4px_0px_#000] hover:shadow-[6px_6px_0px_#000] hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
+                style={{ fontFamily: "var(--font-body)" }}
+              >
+                <Send className="w-5 h-5" />{" "}
+                {submitting ? "Mengamankan Data..." : "Kirim Ulasan Resmi"}
+              </button>
+            )}
           </div>
         </div>
       </div>

@@ -90,52 +90,91 @@ const getReviewerDashboard = async (req, res, next) => {
   try {
     const uid = req.user.uid;
 
-    // Cari portofolio yang sudah mengandung review dari user ini
-    const reviewedSnap = await db.collection('portfolios').where('peerReviews', 'array-contains', { reviewerId: uid }).get();
-
-    // Fallback: query manual karena Firestore tidak support nested array query dengan baik
-    const allPortfoliosSnap = await db.collection('portfolios').orderBy('submittedAt', 'desc').limit(100).get();
-
-    const myReviews = [];
-    allPortfoliosSnap.docs.forEach((doc) => {
-      const p = doc.data();
-      const myReview = p.peerReviews?.find((r) => r.reviewerId === uid);
-      if (myReview) {
-        myReviews.push({
-          portfolioId: p.portfolioId,
-          title: p.title,
-          vocationField: p.vocationField,
-          portfolioStatus: p.status,
-          myScore: myReview.scores?.overall,
-          reviewedAt: myReview.reviewedAt,
-        });
-      }
-    });
-
-    // Hitung pending yang bisa direview (bukan milik sendiri dan belum direview)
-    const pendingSnap = await db.collection('portfolios').where('status', '==', 'pending').get();
-
-    const pendingCount = pendingSnap.docs.filter((doc) => {
-      const p = doc.data();
-      return p.uid !== uid && !p.peerReviews?.some((r) => r.reviewerId === uid);
-    }).length;
-
+    // 1. Ambil data dasar user dari koleksi 'users' untuk mendapatkan saldo coins riil
     const userSnap = await db.collection('users').doc(uid).get();
     const userData = userSnap.exists ? userSnap.data() : {};
 
+    // 2. Ambil data profil profesional verifikator dari koleksi 'verifierProfiles'
+    const verifierProfileSnap = await db.collection('verifierProfiles').doc(uid).get();
+    const verifierProfileData = verifierProfileSnap.exists ? verifierProfileSnap.data() : {};
+
+    // 3. Ambil semua portofolio yang ditugaskan kepada verifikator ini
+    const assignedPortfoliosSnap = await db.collection('portfolios').where('assignedVerifier', '==', uid).get();
+
+    const assignedPortfolios = assignedPortfoliosSnap.docs.map((doc) => doc.data());
+
+    // 4. Filter portofolio yang ulasannya sudah selesai (status approved)
+    const completedReviews = assignedPortfolios.filter((p) => p.status === 'approved');
+
+    // Filter portofolio yang statusnya masih dikerjakan (under_review / menunggu)
+    const pendingCount = assignedPortfolios.filter((p) => p.status === 'under_review').length;
+
+    // 5. 📊 ALGORITMA TREN AKTIVITAS 7 HARI TERAKHIR
+    // Inisialisasi trend dengan default 0 untuk semua hari
+    const weeklyTrend = {
+      senin: 0,
+      selasa: 0,
+      rabu: 0,
+      kamis: 0,
+      jumat: 0,
+      sabtu: 0,
+      minggu: 0,
+    };
+
+    const dayMappingIndo = ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'];
+    const now = new Date();
+
+    completedReviews.forEach((p) => {
+      // Prioritaskan tanggal review dirilis, jika tidak ada gunakan timestamp update terakhir
+      const reviewDateStr = p.verifierReview?.reviewedAt || p.updatedAt;
+      if (reviewDateStr) {
+        const logDate = new Date(reviewDateStr);
+
+        // Jaring Pengaman: Hitung selisih hari untuk memastikan ulasan berada dalam rentang 7 hari terakhir
+        const diffTime = Math.abs(now.getTime() - logDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays <= 7) {
+          const dayName = dayMappingIndo[logDate.getDay()];
+          weeklyTrend[dayName]++;
+        }
+      }
+    });
+
+    // 6. Map data ulasan terbaru untuk konsumsi widget list di frontend
+    const recentReviews = completedReviews
+      .sort((a, b) => {
+        const dateA = new Date(a.verifierReview?.reviewedAt || 0).getTime();
+        const dateB = new Date(b.verifierReview?.reviewedAt || 0).getTime();
+        return dateB - dateA; // Urutkan dari yang paling baru (descending)
+      })
+      .map((p) => ({
+        portfolioId: p.portfolioId,
+        title: p.title || 'No Title',
+        vocationField: p.vocationField || 'General',
+        portfolioStatus: p.status,
+        score: p.verifiedScore || 0,
+        reviewedAt: p.verifierReview?.reviewedAt || '-',
+      }))
+      .slice(0, 5); // Ambil 5 ulasan teratas saja untuk optimalisasi bandwidth
+
+    // 7. Kirimkan JSON response terstruktur yang match dengan kebutuhan state frontend ProDashboard
     res.json({
       profile: {
-        displayName: userData.displayName,
-        reputationPoints: userData.reputationPoints,
+        displayName: userData.displayName || verifierProfileData.fullName || 'Reviewer Profesional',
+        coins: userData.coins || 0, // Saldo koin riil dari koleksi users
+        totalReviews: verifierProfileData.totalReviews || completedReviews.length, // Counter atomik dari verifierProfiles
       },
       summary: {
-        totalReviewsGiven: myReviews.length,
+        totalReviewsGiven: verifierProfileData.totalReviews || completedReviews.length,
         pendingReviewsAvailable: pendingCount,
-        reputationPoints: userData.reputationPoints || 0,
+        coins: userData.coins || 0,
       },
-      recentReviews: myReviews.slice(0, 10),
+      weeklyTrend: weeklyTrend, // Field tren aktivitas dinamis terpasang sempurna!
+      recentReviews: recentReviews,
     });
   } catch (error) {
+    console.error('Error pada getReviewerDashboard backend:', error);
     next(error);
   }
 };

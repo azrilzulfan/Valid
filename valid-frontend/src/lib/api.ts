@@ -200,6 +200,14 @@ export const portfolioApi = {
     });
     return handleRes(res);
   },
+
+  getAssignedToMe: async () => {
+    const res = await fetch(`${BASE_URL}/api/portfolio/assigned/me`, {
+      method: "GET",
+      headers: getHeaders(),
+    });
+    return handleRes(res);
+  },
 };
 
 // ==========================================

@@ -1,6 +1,6 @@
 // HALAMAN: C:\laragon\www\valid-react\src\pages\ProRequests.tsx
-// FUNGSI: Mengelola antrean peninjauan portofolio mahasiswa berbasis integrasi API backend riil
-// API YANG DIBUTUHKAN: dashboardApi.getReviewerDashboard(), portfolioApi.getPendingReviews()
+// FUNGSI: Mengelola antrean peninjauan portofolio yang ditugaskan kepada verifikator yang sedang login
+// API YANG DIBUTUHKAN: dashboardApi.getReviewerDashboard(), portfolioApi.getAssignedToMe()
 
 import { motion, Variants } from "framer-motion";
 import {
@@ -39,36 +39,42 @@ export function ProRequests() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [dashRes, pendRes] = await Promise.all([
+        const [dashRes, assignedRes] = await Promise.all([
           dashboardApi.getReviewerDashboard(),
-          portfolioApi.getPendingReviews(),
+          portfolioApi.getAssignedToMe(),
         ]);
 
         const statsData = dashRes?.stats || dashRes;
         setStats(statsData);
 
-        // Gabungkan pending requests dengan recent reviews untuk tab "Selesai"
-        const pending = (pendRes?.portfolios || pendRes || []).map((p: any) => ({
-          id: p.portfolioId || p.id,
-          name: p.title || p.candidateName || "No Title",
-          role: p.vocationField || p.category || "General",
-          date: p.submittedAt ? new Date(p.submittedAt).toLocaleDateString("id-ID") : "-",
-          status: "Menunggu",
-          message:
-            p.description || p.message || "Mohon verifikasi portofolio unit kompetensi saya.",
-        }));
+        const assigned = assignedRes?.portfolios || [];
 
-        const completed = (statsData?.recentReviews || []).map((p: any) => ({
-          id: p.portfolioId || p.id,
-          name: p.title || p.candidateName || "No Title",
-          role: p.vocationField || p.category || "General",
-          date: p.reviewedAt ? new Date(p.reviewedAt).toLocaleDateString("id-ID") : "-",
-          status: "Selesai",
-          score: p.myScore || p.score,
-          message:
-            p.feedback ||
-            "Portofolio telah selesai dinilai dan divalidasi oleh verifikator industri.",
-        }));
+        const pending = assigned
+          .filter((p: any) => p.status === "under_review")
+          .map((p: any) => ({
+            id: p.portfolioId,
+            name: p.title || "No Title",
+            role: p.vocationField || "General",
+            date: p.assignedAt ? new Date(p.assignedAt).toLocaleDateString("id-ID") : "-",
+            status: "Menunggu",
+            message: p.description || "Mohon verifikasi portofolio unit kompetensi saya.",
+          }));
+
+        const completed = assigned
+          .filter((p: any) => p.status === "approved")
+          .map((p: any) => ({
+            id: p.portfolioId,
+            name: p.title || "No Title",
+            role: p.vocationField || "General",
+            date: p.verifierReview?.reviewedAt
+              ? new Date(p.verifierReview.reviewedAt).toLocaleDateString("id-ID")
+              : "-",
+            status: "Selesai",
+            score: p.verifiedScore,
+            message:
+              p.verifierReview?.feedback ||
+              "Portofolio telah selesai dinilai dan divalidasi oleh verifikator industri.",
+          }));
 
         setRequests([...pending, ...completed]);
       } catch (err) {
@@ -156,7 +162,7 @@ export function ProRequests() {
                 strokeWidth={item.active ? 2.5 : 2}
               />
               <span
-                className={`text-[9px] md:text-[12px] uppercase tracking-wider ${item.active ? "font-black" : "font-bold"}`}
+                className={`text-[9px] md:text-[13px] uppercase tracking-wider ${item.active ? "font-black" : "font-bold"}`}
                 style={{ fontFamily: "var(--font-body)" }}
               >
                 {item.label}
@@ -184,11 +190,10 @@ export function ProRequests() {
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 h-[calc(100vh-75px)] md:h-screen overflow-y-auto relative pb-[100px] md:pb-[40px]">
-        {/* Decorative Grid Background */}
         <div
           className="absolute inset-0 z-0 pointer-events-none opacity-[0.03]"
           style={{
-            backgroundImage: "radial-gradient(var(--shadow-color) 2px, transparent 2px)",
+            backgroundImage: "radial-gradient(#0f172a 2px, transparent 2px)",
             backgroundSize: "30px 30px",
           }}
         />
@@ -210,23 +215,23 @@ export function ProRequests() {
           >
             <div>
               <div
-                className="inline-flex px-3 py-1 bg-blue-100 dark:bg-blue-950/50 border-[2.5px] border-slate-900 rounded-full font-black text-[10px] uppercase tracking-widest text-blue-700 dark:text-blue-400 mb-[16px] shadow-[2px_2px_0px_#0f172a]"
+                className="inline-flex px-3 py-1 bg-blue-100 border-[2.5px] border-slate-900 rounded-full font-black text-[10px] uppercase tracking-widest text-slate-900 mb-[16px] shadow-[2px_2px_0px_#0f172a]"
                 style={{ fontFamily: "var(--font-body)" }}
               >
-                DAFTAR ANTREAN MAHASISWA
+                DAFTAR ANTREAN
               </div>
               <h1
                 className="font-black text-[36px] md:text-[52px] text-[var(--text-color)] leading-[0.9] tracking-tighter uppercase mb-2"
                 style={{ fontFamily: "var(--font-impact)" }}
               >
-                PERMINTAAN REVIEW.
+                ANTREAN PORTOFOLIO.
               </h1>
               <p
                 className="font-bold text-[14px] md:text-[16px] text-slate-400 max-w-[600px] leading-relaxed"
                 style={{ fontFamily: "var(--font-body)" }}
               >
-                Daftar ajuan portofolio siswa yang sedang mengantre untuk divalidasi. Selesaikan
-                penilaian objektif untuk klaim imbalan koin reputasi.
+                Portofolio-portofolio berikut telah ditugaskan kepada Anda untuk dinilai. Selesaikan
+                evaluasi untuk memvalidasi kompetensi kandidat.
               </p>
             </div>
 
@@ -239,18 +244,18 @@ export function ProRequests() {
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Cari nama kandidat atau bidang..."
-                  className="w-full bg-[var(--bg-a)] border-[3px] border-slate-900 rounded-[1rem] py-[12px] pl-[48px] pr-[16px] font-bold text-[13px] text-[var(--text-color)] focus:outline-none focus:shadow-[4px_4px_0px_var(--shadow-color)] transition-all"
+                  placeholder="Cari judul atau bidang..."
+                  className="w-full bg-[var(--bg-a)] border-[3px] border-slate-900 rounded-[1rem] py-[12px] pl-[48px] pr-[16px] font-bold text-[13px] text-[var(--text-color)] focus:outline-none focus:shadow-[4px_4px_0px_#0f172a] transition-all"
                   style={{ fontFamily: "var(--font-body)" }}
                 />
               </div>
-              <button className="bg-[var(--bg-a)] text-[var(--text-color)] border-[3px] border-slate-900 rounded-[1rem] px-[16px] py-[12px] flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors w-full sm:w-auto shadow-[4px_4px_0px_var(--shadow-color)] hover:-translate-y-0.5 hover:shadow-[5px_5px_0px_var(--shadow-color)]">
+              <button className="bg-[var(--bg-a)] border-[3px] border-slate-900 rounded-[1rem] px-[16px] py-[12px] flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors w-full sm:w-auto shadow-[4px_4px_0px_var(--shadow-color)] hover:-translate-y-0.5 hover:shadow-[5px_5px_0px_var(--shadow-color)]">
                 <Filter className="w-4 h-4" />
                 <span
                   className="font-black text-[11px] uppercase tracking-widest"
                   style={{ fontFamily: "var(--font-body)" }}
                 >
-                  Kategori
+                  Filter
                 </span>
               </button>
             </div>
@@ -349,7 +354,7 @@ export function ProRequests() {
                               className="font-bold text-[10px] text-slate-400 uppercase tracking-widest"
                               style={{ fontFamily: "var(--font-body)" }}
                             >
-                              Diajukan: {req.date}
+                              Ditugaskan: {req.date}
                             </span>
                           </div>
 

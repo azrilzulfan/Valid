@@ -44,7 +44,6 @@ const uploadPortfolio = async (req, res, next) => {
       const fileHash = generateFileHash(file.buffer);
       hashes.push(fileHash);
 
-      // Cek duplikasi hash di Firestore
       const dupSnap = await db.collection('portfolios').where('checksumHash', '==', fileHash).limit(1).get();
 
       if (!dupSnap.empty) {
@@ -127,16 +126,30 @@ const getMyPortfolios = async (req, res, next) => {
   }
 };
 
-// 3. Detail portofolio tertentu (hanya pemilik)
+// 3. Detail portofolio tertentu (Multi-role access control)
 const getPortfolioById = async (req, res, next) => {
   try {
     const portfolioSnap = await db.collection('portfolios').doc(req.params.portfolioId).get();
 
-    if (!portfolioSnap.exists || portfolioSnap.data().uid !== req.user.uid) {
+    if (!portfolioSnap.exists) {
       return res.status(404).json({ error: 'Portofolio tidak ditemukan' });
     }
 
-    res.json({ portfolio: portfolioSnap.data() });
+    const portfolio = portfolioSnap.data();
+
+    // KUNCI UTAMA PERBAIKAN: Berikan izin akses jika penilik adalah:
+    // 1. Pemilik portofolio (Kandidat/Mahasiswa)
+    // 2. Verifikator resmi yang ditugaskan (assignedVerifier)
+    // 3. Rekan mahasiswa lain yang sedang melakukan fase 'peer review' (status pending)
+    const isOwner = portfolio.uid === req.user.uid;
+    const isAssignedVerifier = portfolio.assignedVerifier === req.user.uid;
+    const isPeerReviewer = portfolio.status === 'pending';
+
+    if (!isOwner && !isAssignedVerifier && !isPeerReviewer) {
+      return res.status(403).json({ error: 'Anda tidak memiliki hak akses kekuasaan untuk melihat portofolio ini' });
+    }
+
+    res.json({ portfolio });
   } catch (error) {
     next(error);
   }
@@ -276,7 +289,7 @@ const addUserComment = async (req, res, next) => {
   }
 };
 
-// 7. Submit review resmi oleh verifikator yang ditugaskan
+// 7. Submit review resmi oleh verifikator yang ditugaskan (Terintegrasi Sistem Koin)
 const submitVerifierReview = async (req, res, next) => {
   try {
     const { portfolioId } = req.params;
@@ -301,6 +314,7 @@ const submitVerifierReview = async (req, res, next) => {
 
     const overallScore = Math.round((technicalAccuracy + processDocumentation + originality) / 3);
 
+    // 1. Kunci status portofolio menjadi approved dan simpan ulasan resmi
     await portfolioRef.update({
       status: 'approved',
       verifiedScore: overallScore,
@@ -312,13 +326,20 @@ const submitVerifierReview = async (req, res, next) => {
       },
     });
 
-    // Update statistik verifikator
+    // 2. Ambil data profil verifikator untuk update statistik & cek reviewFee
     const verifierSnap = await db.collection('verifierProfiles').doc(req.user.uid).get();
+    let feeEarned = 0;
+
     if (verifierSnap.exists) {
       const v = verifierSnap.data();
       const newTotal = v.totalReviews + 1;
       const newRating = v.averageRating ? (v.averageRating * v.totalReviews + overallScore) / newTotal : overallScore;
 
+      // 🌟 DYNAMIC FALLBACK RATE CHECK: Prioritaskan fee yang melekat pada order portofolio saat transaksi mahasiswa,
+      // jika tidak ada baru gunakan reviewFee standar dari master data profil verifikator.
+      feeEarned = portfolio.reviewFee || v.reviewFee || 0;
+
+      // Update akumulasi statistik review di profile verifikator
       await db
         .collection('verifierProfiles')
         .doc(req.user.uid)
@@ -326,11 +347,27 @@ const submitVerifierReview = async (req, res, next) => {
           totalReviews: newTotal,
           averageRating: Math.round(newRating * 10) / 10,
         });
+
+      // 🌟 ATOMIC WALLET INCREMENT: Tambahkan koin ke dompet utama verifikator di koleksi 'users'
+      if (feeEarned > 0) {
+        await db
+          .collection('users')
+          .doc(req.user.uid)
+          .update({
+            coins: admin.firestore.FieldValue.increment(feeEarned),
+            updatedAt: new Date().toISOString(),
+          });
+      }
     }
 
+    // 3. Picu notifikasi sukses ke akun mahasiswa pemilik portofolio
     await createNotification(portfolio.uid, 'portfolio_approved', portfolioId, portfolio.title);
 
-    res.json({ message: 'Review verifikator berhasil disimpan', overallScore });
+    res.json({
+      message: `Review verifikator berhasil disimpan, saldo koin Anda bertambah +${feeEarned}`,
+      overallScore,
+      feeEarned,
+    });
   } catch (error) {
     next(error);
   }
@@ -366,6 +403,30 @@ const getPublicPortfolios = async (req, res, next) => {
   }
 };
 
+const getAssignedToMe = async (req, res, next) => {
+  try {
+    const snapshot = await db.collection('portfolios').where('assignedVerifier', '==', req.user.uid).where('status', 'in', ['under_review', 'approved']).orderBy('assignedAt', 'desc').get();
+
+    const portfolios = snapshot.docs.map((doc) => {
+      const d = doc.data();
+      return {
+        portfolioId: d.portfolioId,
+        title: d.title,
+        vocationField: d.vocationField,
+        description: d.description,
+        status: d.status,
+        assignedAt: d.assignedAt,
+        verifiedScore: d.verifiedScore,
+        verifierReview: d.verifierReview,
+      };
+    });
+
+    res.json({ portfolios });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   uploadPortfolio,
   getMyPortfolios,
@@ -375,4 +436,5 @@ module.exports = {
   addUserComment,
   submitVerifierReview,
   getPublicPortfolios,
+  getAssignedToMe,
 };

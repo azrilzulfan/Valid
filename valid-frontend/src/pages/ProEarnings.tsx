@@ -15,7 +15,6 @@ import {
   Wallet,
   CreditCard,
   ChevronRight,
-  Activity,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
@@ -39,20 +38,21 @@ export function ProEarnings() {
       try {
         setLoading(true);
         const dashRes = await dashboardApi.getReviewerDashboard();
-        // Menormalisasi struktur data respons dari backend
+
         const statsData = dashRes?.stats || dashRes;
         setStats(statsData);
 
-        // Memetakan riwayat ulasan selesai menjadi transaksi pendapatan (income) riil
         const income = (statsData?.recentReviews || []).map((p: any) => ({
           id: p.portfolioId || p.id,
           type: "income",
           title: `Review Portofolio: ${p.title || "Tanpa Judul"}`,
-          date: p.reviewedAt ? new Date(p.reviewedAt).toLocaleString("id-ID") : "Selesai",
-          amount: p.pointEarned || p.points || 10, // Poin dinamis dari backend atau fallback 10 koin
+          date:
+            p.reviewedAt && p.reviewedAt !== "-"
+              ? new Date(p.reviewedAt).toLocaleString("id-ID")
+              : "Selesai",
+          amount: p.reviewFee || p.pointEarned || p.points || 50,
         }));
 
-        // Gabungkan dengan penarikan saldo jika tersedia di dalam payload backend
         const withdrawals = (statsData?.recentWithdrawals || []).map((w: any) => ({
           id: w.id,
           type: "payout",
@@ -76,28 +76,64 @@ export function ProEarnings() {
     navigate({ to: "/login" });
   };
 
-  // Menghitung tinggi relatif grafik tren berdasarkan data mingguan riil dari database (skala maks 20)
+  const getTrendReviewCount = (dayValue: any) => {
+    return Number(dayValue) || 0;
+  };
+
+  const reviewCounts = [
+    getTrendReviewCount(stats?.weeklyTrend?.senin),
+    getTrendReviewCount(stats?.weeklyTrend?.selasa),
+    getTrendReviewCount(stats?.weeklyTrend?.rabu),
+    getTrendReviewCount(stats?.weeklyTrend?.kamis),
+    getTrendReviewCount(stats?.weeklyTrend?.jumat),
+    getTrendReviewCount(stats?.weeklyTrend?.sabtu),
+    getTrendReviewCount(stats?.weeklyTrend?.minggu),
+  ];
+
+  // FIX SCALE 2: Penentuan pembagi maksimum dengan batas bawah 5 agar visualisasi tetap berfluktuasi proporsional
+  const maxReviews = Math.max(...reviewCounts, 5);
+
   const getBarHeight = (value: number) => {
-    return `${Math.min((value / 20) * 100, 100)}%`;
+    const targetVal = Number(value) || 0;
+    if (targetVal === 0) return "0px"; // Menjamin batang berharga 0 koin rata di lantai terbawah
+    return `${Math.min((targetVal / maxReviews) * 100, 100)}%`;
+  };
+
+  const getDayCoins = (value: number) => {
+    return (Number(value) || 0) * 50;
   };
 
   const weeklyTrendData = [
-    { day: "Sen", h: getBarHeight(stats?.weeklyTrend?.senin || stats?.earningsTrend?.[0] || 0) },
-    { day: "Sel", h: getBarHeight(stats?.weeklyTrend?.selasa || stats?.earningsTrend?.[1] || 0) },
-    { day: "Rab", h: getBarHeight(stats?.weeklyTrend?.rabu || stats?.earningsTrend?.[2] || 0) },
-    { day: "Kam", h: getBarHeight(stats?.weeklyTrend?.kamis || stats?.earningsTrend?.[3] || 0) },
-    { day: "Jum", h: getBarHeight(stats?.weeklyTrend?.jumat || stats?.earningsTrend?.[4] || 0) },
-    { day: "Sab", h: getBarHeight(stats?.weeklyTrend?.sabtu || stats?.earningsTrend?.[5] || 0) },
-    { day: "Min", h: getBarHeight(stats?.weeklyTrend?.minggu || stats?.earningsTrend?.[6] || 0) },
+    { day: "Sen", h: getBarHeight(reviewCounts[0]), val: getDayCoins(reviewCounts[0]) },
+    { day: "Sel", h: getBarHeight(reviewCounts[1]), val: getDayCoins(reviewCounts[1]) },
+    { day: "Rab", h: getBarHeight(reviewCounts[2]), val: getDayCoins(reviewCounts[2]) },
+    { day: "Kam", h: getBarHeight(reviewCounts[3]), val: getDayCoins(reviewCounts[3]) },
+    { day: "Jum", h: getBarHeight(reviewCounts[4]), val: getDayCoins(reviewCounts[4]) },
+    { day: "Sab", h: getBarHeight(reviewCounts[5]), val: getDayCoins(reviewCounts[5]) },
+    { day: "Min", h: getBarHeight(reviewCounts[6]), val: getDayCoins(reviewCounts[6]) },
   ];
 
-  const totalKoin = stats?.totalEarnings || stats?.profile?.reputationPoints || 0;
+  const totalKoin = stats?.summary?.coins ?? stats?.profile?.coins ?? 0;
+
+  const hitungTotalKoinMingguan = () => {
+    if (!stats?.weeklyTrend) return 0;
+    const t = stats.weeklyTrend;
+    const totalReviewMingguIni =
+      (Number(t.senin) || 0) +
+      (Number(t.selasa) || 0) +
+      (Number(t.rabu) || 0) +
+      (Number(t.kamis) || 0) +
+      (Number(t.jumat) || 0) +
+      (Number(t.sabtu) || 0) +
+      (Number(t.minggu) || 0);
+
+    return totalReviewMingguIni * 50;
+  };
 
   return (
     <div className="flex w-full h-screen bg-[var(--bg-b)] overflow-hidden text-[var(--text-color)] font-sans">
       {/* SIDEBAR */}
       <div className="fixed md:relative bottom-0 left-0 w-full md:w-[260px] h-[75px] md:h-screen bg-[var(--bg-a)] md:border-r-[3px] border-t-[3px] md:border-t-0 border-slate-900 flex md:flex-col z-50 md:z-auto transition-all shrink-0">
-        {/* TOP: Logo */}
         <div className="hidden md:flex pt-[24px] pb-[20px] px-[24px] border-b-[3px] border-slate-900 bg-yellow-400 items-center justify-between">
           <div className="flex items-center gap-2">
             <span
@@ -110,7 +146,6 @@ export function ProEarnings() {
           <div className="w-[10px] h-[10px] bg-green-500 rounded-full border-[2px] border-slate-900"></div>
         </div>
 
-        {/* USER INFO */}
         <div className="hidden md:flex items-center gap-3 py-[20px] px-[24px] border-b-[3px] border-slate-900 bg-[var(--bg-b)]">
           <div className="w-[44px] h-[44px] rounded-[14px] border-[2.5px] border-slate-900 bg-purple-200 flex items-center justify-center shadow-[3px_3px_0px_var(--shadow-color)]">
             <span
@@ -136,7 +171,6 @@ export function ProEarnings() {
           </div>
         </div>
 
-        {/* NAV LINKS */}
         <div className="flex-1 flex md:flex-col flex-row w-full justify-around md:justify-start md:px-[16px] md:py-[24px] gap-0 md:gap-[10px] items-center md:items-stretch h-full overflow-y-auto">
           {[
             { icon: LayoutDashboard, label: "Beranda Pro", path: "/pro/dashboard" },
@@ -168,7 +202,6 @@ export function ProEarnings() {
           ))}
         </div>
 
-        {/* BOTTOM: Logout */}
         <div className="hidden md:flex flex-col p-[24px] border-t-[3px] border-slate-900 bg-[var(--bg-b)]">
           <div
             onClick={handleLogout}
@@ -187,7 +220,6 @@ export function ProEarnings() {
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 h-[calc(100vh-75px)] md:h-screen overflow-y-auto relative pb-[100px] md:pb-[40px]">
-        {/* Decorative Grid Background */}
         <div
           className="absolute inset-0 z-0 pointer-events-none opacity-[0.03]"
           style={{
@@ -230,7 +262,7 @@ export function ProEarnings() {
           </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-[32px]">
-            {/* SALDO CARD & CHART (Left 1/3) */}
+            {/* SALDO CARD & CHART */}
             <div className="lg:col-span-1 flex flex-col gap-[32px]">
               <motion.div
                 variants={sectionVariants}
@@ -298,24 +330,21 @@ export function ProEarnings() {
                   className="font-black text-[32px] text-[var(--text-color)] tracking-tighter mb-6"
                   style={{ fontFamily: "var(--font-impact)" }}
                 >
-                  +
-                  {loading
-                    ? "-"
-                    : stats?.weeklyTrend
-                      ? Object.values(stats.weeklyTrend).reduce((a: any, b: any) => a + b, 0)
-                      : 0}{" "}
-                  KOIN
+                  + {loading ? "-" : hitungTotalKoinMingguan()} KOIN
                 </div>
 
-                {/* Custom CSS Bar Chart */}
                 <div className="h-[180px] flex items-end justify-between gap-2 border-b-[2.5px] border-slate-900 pb-2 relative">
-                  {/* Grid Lines */}
                   <div className="absolute top-0 w-full border-t-[2px] border-dashed border-slate-200 dark:border-slate-800" />
                   <div className="absolute top-1/2 w-full border-t-[2px] border-dashed border-slate-200 dark:border-slate-800" />
 
-                  {/* Bars */}
                   {weeklyTrendData.map((bar, i) => (
-                    <div key={i} className="flex flex-col items-center gap-2 flex-1 z-10 group">
+                    <div
+                      key={i}
+                      className="flex flex-col items-center gap-2 flex-1 h-full justify-end z-10 group relative"
+                    >
+                      <div className="absolute bottom-full mb-1 bg-slate-900 text-white font-black text-[9px] px-1.5 py-0.5 rounded border border-slate-900 shadow-[1px_1px_0px_rgba(0,0,0,1)] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30 whitespace-nowrap">
+                        +{bar.val} Koin
+                      </div>
                       <div
                         className={`w-full max-w-[24px] border-[2.5px] border-slate-900 rounded-t-sm shadow-[2px_0px_0px_var(--shadow-color)] transition-all duration-500 group-hover:brightness-110 ${i === 6 ? "bg-yellow-400" : "bg-blue-600"}`}
                         style={{ height: bar.h }}
@@ -324,7 +353,6 @@ export function ProEarnings() {
                   ))}
                 </div>
 
-                {/* X Axis Labels */}
                 <div className="flex justify-between mt-2 px-1">
                   {weeklyTrendData.map((bar, i) => (
                     <span
@@ -339,7 +367,7 @@ export function ProEarnings() {
               </motion.div>
             </div>
 
-            {/* TRANSACTIONS LIST (Right 2/3) */}
+            {/* TRANSACTIONS LIST */}
             <motion.div variants={sectionVariants} className="lg:col-span-2">
               <h2
                 className="font-black text-[24px] md:text-[28px] text-[var(--text-color)] uppercase tracking-tight mb-[20px]"
@@ -358,7 +386,6 @@ export function ProEarnings() {
                       Memuat Mutasi Keuangan...
                     </div>
                   )}
-
                   {!loading && transactions.length === 0 && (
                     <div
                       className="p-[40px] text-center font-black text-[14px] text-slate-400 uppercase tracking-widest"
@@ -367,7 +394,6 @@ export function ProEarnings() {
                       Belum ada riwayat pendapatan
                     </div>
                   )}
-
                   {!loading &&
                     transactions.map((trx, index) => (
                       <div

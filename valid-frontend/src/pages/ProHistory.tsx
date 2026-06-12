@@ -291,13 +291,6 @@ export function ProHistory() {
 
                       <div className="flex items-center gap-2">
                         <div
-                          className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-100 border-[2px] border-green-600 text-green-700 rounded-full font-black text-[9px] uppercase tracking-widest"
-                          style={{ fontFamily: "var(--font-body)" }}
-                        >
-                          <CheckCircle2 className="w-3 h-3" />
-                          Terverifikasi
-                        </div>
-                        <div
                           className="font-bold text-[10px] text-slate-400 uppercase tracking-widest flex items-center gap-1"
                           style={{ fontFamily: "var(--font-body)" }}
                         >
@@ -311,24 +304,10 @@ export function ProHistory() {
                       <div className="flex items-center gap-6 shrink-0 w-full md:w-auto justify-start">
                         <div className="flex flex-col items-center">
                           <span
-                            className="font-bold text-[10px] text-slate-400 uppercase tracking-widest mb-1"
-                            style={{ fontFamily: "var(--font-body)" }}
-                          >
-                            Skor Awal
-                          </span>
-                          <div
-                            className="w-[48px] h-[48px] rounded-full border-[2.5px] border-slate-300 dark:border-slate-700 flex items-center justify-center font-black text-[16px] text-slate-400"
-                            style={{ fontFamily: "var(--font-impact)" }}
-                          >
-                            {req.aiScore || "-"}
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-center">
-                          <span
                             className="font-bold text-[10px] text-blue-500 uppercase tracking-widest mb-1"
                             style={{ fontFamily: "var(--font-body)" }}
                           >
-                            Skor Anda
+                            Skor
                           </span>
                           <div
                             className="w-[48px] h-[48px] rounded-full border-[2.5px] border-blue-500 flex items-center justify-center font-black text-[18px] text-blue-600 bg-blue-50 dark:bg-blue-950/30"

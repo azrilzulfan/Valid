@@ -4,20 +4,11 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const { verifyToken } = require('../../middleware/auth');
-const {
-  uploadPortfolio,
-  getMyPortfolios,
-  getPortfolioById,
-  getPendingReviews,
-  submitPeerReview,
-  addUserComment,
-  submitVerifierReview,
-  getPublicPortfolios
-} = require('./portfolio.controller');
+const { uploadPortfolio, getMyPortfolios, getPortfolioById, getPendingReviews, submitPeerReview, addUserComment, submitVerifierReview, getPublicPortfolios, getAssignedToMe } = require('./portfolio.controller');
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits:  { fileSize: 10 * 1024 * 1024 }, // maks 10 MB per file
+  limits: { fileSize: 10 * 1024 * 1024 }, // maks 10 MB per file
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
     if (allowedTypes.includes(file.mimetype)) {
@@ -25,7 +16,7 @@ const upload = multer({
     } else {
       cb(new Error('Format file tidak didukung. Gunakan JPG, PNG, atau PDF.'));
     }
-  }
+  },
 });
 
 /**
@@ -250,5 +241,7 @@ router.post('/:portfolioId/comment', verifyToken, addUserComment);
  *         description: Bukan verifikator yang ditugaskan
  */
 router.post('/:portfolioId/verify', verifyToken, submitVerifierReview);
+
+router.get('/assigned/me', verifyToken, getAssignedToMe);
 
 module.exports = router;
