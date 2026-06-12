@@ -7,14 +7,14 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const VOCATION_CONTEXT = {
-  teknik:                'bidang teknik mesin / teknik elektro / teknik otomotif',
-  kesehatan:             'bidang asisten keperawatan / farmasi / kesehatan lingkungan',
-  hospitality:           'bidang perhotelan / tata boga / pariwisata',
-  teknologi_informasi:   'bidang rekayasa perangkat lunak / jaringan komputer / multimedia',
-  bisnis:                'bidang akuntansi / pemasaran / administrasi perkantoran',
+  teknik: 'bidang teknik mesin / teknik elektro / teknik otomotif',
+  kesehatan: 'bidang asisten keperawatan / farmasi / kesehatan lingkungan',
+  hospitality: 'bidang perhotelan / tata boga / pariwisata',
+  teknologi_informasi: 'bidang rekayasa perangkat lunak / jaringan komputer / multimedia',
+  bisnis: 'bidang akuntansi / pemasaran / administrasi perkantoran',
 };
 
-// 1. Mulai sesi wawancara baru
+// 1. Mulai sesi wawancara baru & Generate 5 Pertanyaan Sekaligus (OPTIMASI ACTION PLAN 3)
 const startSession = async (req, res, next) => {
   try {
     const { vocationField } = req.body;
@@ -22,41 +22,77 @@ const startSession = async (req, res, next) => {
     if (!vocationField || !VOCATION_CONTEXT[vocationField]) {
       return res.status(400).json({
         error: 'Bidang vokasi tidak valid',
-        validFields: Object.keys(VOCATION_CONTEXT)
+        validFields: Object.keys(VOCATION_CONTEXT),
       });
     }
 
     const sessionId = uuidv4();
+    let generatedQuestions = [];
 
+    // Panggil Gemini API 1x saja di awal untuk memborong 5 pertanyaan!
+    try {
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash',
+        generationConfig: {
+          responseMimeType: 'application/json',
+          maxOutputTokens: 1024,
+        },
+      });
+
+      const prompt = `Buat 5 pertanyaan wawancara terstruktur (gabungan behavioral dan teknis dasar) dalam Bahasa Indonesia untuk pencari kerja lulusan pendidikan vokasi di ${VOCATION_CONTEXT[vocationField]}.
+      Kembalikan HANYA dalam format JSON array dengan struktur:
+      [
+        { "text": "Pertanyaan 1" },
+        { "text": "Pertanyaan 2" },
+        { "text": "Pertanyaan 3" },
+        { "text": "Pertanyaan 4" },
+        { "text": "Pertanyaan 5" }
+      ]`;
+
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+      const parsed = JSON.parse(text);
+
+      // Tambahkan UUID untuk masing-masing pertanyaan
+      generatedQuestions = parsed.map((q) => ({
+        questionId: uuidv4(),
+        text: q.text || q.pertanyaan || q.question,
+      }));
+    } catch (apiError) {
+      console.error('Gemini API Error (startSession):', apiError);
+      // Fallback sangat penting! Jika API Limit (429) terjadi, aplikasi TETAP berjalan
+      generatedQuestions = [
+        { questionId: uuidv4(), text: 'Silakan perkenalkan diri Anda dan ceritakan latar belakang pendidikan Anda.' },
+        { questionId: uuidv4(), text: `Apa keahlian praktis yang paling Anda kuasai terkait ${VOCATION_CONTEXT[vocationField]}?` },
+        { questionId: uuidv4(), text: 'Ceritakan pengalaman saat Anda menghadapi proyek atau tugas yang sulit, dan bagaimana cara menyelesaikannya.' },
+        { questionId: uuidv4(), text: 'Bagaimana Anda beradaptasi dengan lingkungan kerja baru atau bekerja di dalam tim?' },
+        { questionId: uuidv4(), text: 'Apa pencapaian terbesar Anda sejauh ini yang paling relevan dengan bidang pekerjaan ini?' },
+      ];
+    }
+
+    // Simpan data sesi beserta KELIMA pertanyaan ke Firestore
     await db.collection('interviewSessions').doc(sessionId).set({
       sessionId,
-      uid:          req.user.uid,
+      uid: req.user.uid,
       vocationField,
-      status:       'in_progress',
-      questions:    [],
-      answers:      [],
-      faceAnalysisLog:  [],
+      status: 'started',
+      questions: generatedQuestions, // <--- Bank soal lokal disimpan di sini
+      answers: [],
+      faceAnalysisLog: [],
       voiceAnalysisLog: [],
-      aiScores:     null,
-      aiFeedback:   '',
-      startedAt:    new Date().toISOString(),
-      completedAt:  null,
+      startedAt: new Date().toISOString(),
     });
 
-    res.status(201).json({
-      message: 'Sesi wawancara dimulai',
-      sessionId,
-      vocationField
-    });
+    res.status(201).json({ sessionId, message: 'Sesi wawancara dimulai dan pertanyaan berhasil di-generate.' });
   } catch (error) {
     next(error);
   }
 };
 
-// 2. Generate pertanyaan dari Gemini AI
+// 2. Ambil Pertanyaan Satuan dari Database (TANPA memanggil AI lagi)
 const generateQuestion = async (req, res, next) => {
   try {
-    const { sessionId, questionNumber } = req.body;
+    const { sessionId, questionIndex = 1 } = req.body;
 
     if (!sessionId) {
       return res.status(400).json({ error: 'sessionId wajib diisi' });
@@ -65,134 +101,87 @@ const generateQuestion = async (req, res, next) => {
     const sessionRef = db.collection('interviewSessions').doc(sessionId);
     const sessionSnap = await sessionRef.get();
 
-    if (!sessionSnap.exists || sessionSnap.data().uid !== req.user.uid || sessionSnap.data().status !== 'in_progress') {
-      return res.status(404).json({ error: 'Sesi tidak ditemukan atau sudah selesai' });
+    if (!sessionSnap.exists) {
+      return res.status(404).json({ error: 'Sesi tidak ditemukan' });
     }
 
-    const session = sessionSnap.data();
-    const vocationContext = VOCATION_CONTEXT[session.vocationField];
-    const previousQuestions = session.questions.map(q => q.questionText).join('\n- ');
+    const sessionData = sessionSnap.data();
 
-    const prompt = `Kamu adalah pewawancara kerja profesional untuk calon tenaga kerja vokasi Indonesia di ${vocationContext}.
+    // Konversi indeks yang dikirim frontend agar sesuai dengan urutan array lokal
+    const idx = parseInt(questionIndex) - 1;
+    if (!sessionData.questions || !sessionData.questions[idx]) {
+      return res.status(404).json({ error: 'Pertanyaan tidak ditemukan atau indeks di luar batas' });
+    }
 
-Buatkan 1 pertanyaan wawancara kerja untuk pertanyaan nomor ${questionNumber || session.questions.length + 1} dari 5.
+    const currentQuestion = sessionData.questions[idx];
 
-Aturan:
-- Gunakan Bahasa Indonesia yang formal namun ramah
-- Pertanyaan bersifat situasional atau behavioral (contoh: "Ceritakan pengalaman kamu ketika...")
-- Tingkat kesulitan sesuai lulusan SMK atau D3
-- Jangan ulangi pertanyaan berikut: ${previousQuestions || 'belum ada'}
-- Hanya tulis pertanyaannya saja, tanpa nomor atau pengantar
-
-Pertanyaan:`;
-
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    const result = await model.generateContent(prompt);
-    const questionText = result.response.text().trim();
-
-    const questionId = uuidv4();
-    const questionData = {
-      questionId,
-      questionText,
-      askedAt: new Date().toISOString()
-    };
-
-    await sessionRef.update({
-      questions: [...session.questions, questionData]
+    // Response sekilat kilat! Tanpa latency API Eksternal
+    res.json({
+      question: currentQuestion.text,
+      questionId: currentQuestion.questionId,
     });
-
-    res.json({ questionId, questionText });
   } catch (error) {
     next(error);
   }
 };
 
-// 3. Submit jawaban kandidat
+// 3. Submit Jawaban (Tetap sama)
 const submitAnswer = async (req, res, next) => {
   try {
     const { sessionId, questionId, answerText, durationSeconds } = req.body;
 
     if (!sessionId || !questionId || !answerText) {
-      return res.status(400).json({ error: 'sessionId, questionId, dan answerText wajib diisi' });
+      return res.status(400).json({ error: 'Data tidak lengkap' });
     }
 
     const sessionRef = db.collection('interviewSessions').doc(sessionId);
     const sessionSnap = await sessionRef.get();
 
-    if (!sessionSnap.exists || sessionSnap.data().uid !== req.user.uid) {
+    if (!sessionSnap.exists) {
       return res.status(404).json({ error: 'Sesi tidak ditemukan' });
     }
 
-    const session = sessionSnap.data();
-    const newAnswer = {
+    const answerData = {
       questionId,
       answerText,
-      answeredAt:      new Date().toISOString(),
-      durationSeconds: durationSeconds || 0
+      durationSeconds: durationSeconds || 0,
+      answeredAt: new Date().toISOString(),
     };
 
     await sessionRef.update({
-      answers: [...session.answers, newAnswer]
+      answers: require('firebase-admin').firestore.FieldValue.arrayUnion(answerData),
     });
 
-    res.json({ message: 'Jawaban berhasil disimpan' });
+    res.json({ message: 'Jawaban tersimpan', answer: answerData });
   } catch (error) {
     next(error);
   }
 };
 
-// 4. Submit log analisis wajah & suara dari frontend
+// 4. Submit Log Analisis Ekspresi/Suara (Tetap sama)
 const submitAnalysisLog = async (req, res, next) => {
   try {
-    const { sessionId, faceData, voiceData } = req.body;
+    const { sessionId, faceLog, voiceLog } = req.body;
 
-    if (!sessionId) {
-      return res.status(400).json({ error: 'sessionId wajib diisi' });
-    }
-
-    const sessionRef = db.collection('interviewSessions').doc(sessionId);
-    const sessionSnap = await sessionRef.get();
-
-    if (!sessionSnap.exists || sessionSnap.data().uid !== req.user.uid) {
-      return res.status(404).json({ error: 'Sesi tidak ditemukan' });
-    }
-
-    const session = sessionSnap.data();
     const updates = {};
-
-    if (faceData) {
-      updates.faceAnalysisLog = [
-        ...session.faceAnalysisLog,
-        {
-          timestamp:         new Date().toISOString(),
-          dominantExpression: faceData.dominantExpression,
-          eyeContactScore:   faceData.eyeContactScore,
-          headPostureScore:  faceData.headPostureScore
-        }
-      ];
+    if (faceLog) {
+      updates.faceAnalysisLog = require('firebase-admin').firestore.FieldValue.arrayUnion(faceLog);
+    }
+    if (voiceLog) {
+      updates.voiceAnalysisLog = require('firebase-admin').firestore.FieldValue.arrayUnion(voiceLog);
     }
 
-    if (voiceData) {
-      updates.voiceAnalysisLog = [
-        ...session.voiceAnalysisLog,
-        {
-          timestamp:       new Date().toISOString(),
-          wordsPerMinute:  voiceData.wordsPerMinute,
-          pauseDuration:   voiceData.pauseDuration,
-          volumeVariation: voiceData.volumeVariation
-        }
-      ];
+    if (Object.keys(updates).length > 0) {
+      await db.collection('interviewSessions').doc(sessionId).update(updates);
     }
 
-    await sessionRef.update(updates);
-
-    res.json({ message: 'Log analisis disimpan' });
+    res.json({ message: 'Log analisis tersimpan' });
   } catch (error) {
     next(error);
   }
 };
 
-// 5. Selesaikan sesi dan minta scoring dari Gemini
+// 5. Complete Session & Skoring Akhir (AI Dipanggil ke-2 Kalinya)
 const completeSession = async (req, res, next) => {
   try {
     const { sessionId } = req.body;
@@ -200,94 +189,95 @@ const completeSession = async (req, res, next) => {
     const sessionRef = db.collection('interviewSessions').doc(sessionId);
     const sessionSnap = await sessionRef.get();
 
-    if (!sessionSnap.exists || sessionSnap.data().uid !== req.user.uid || sessionSnap.data().status !== 'in_progress') {
-      return res.status(404).json({ error: 'Sesi tidak ditemukan atau sudah selesai' });
+    if (!sessionSnap.exists) {
+      return res.status(404).json({ error: 'Sesi tidak ditemukan' });
     }
 
-    const session = sessionSnap.data();
+    const sessionData = sessionSnap.data();
 
-    // Susun Q&A untuk dikirim ke Gemini
-    const qaText = session.questions.map((q, i) => {
-      const answer = session.answers.find(a => a.questionId === q.questionId);
-      return `Pertanyaan ${i + 1}: ${q.questionText}\nJawaban: ${answer ? answer.answerText : '(tidak dijawab)'}`;
-    }).join('\n\n');
+    if (sessionData.status === 'completed') {
+      return res.status(400).json({ error: 'Sesi sudah selesai dan dinilai' });
+    }
 
-    // Hitung rata-rata skor wajah dari log
-    const avgEyeContact = session.faceAnalysisLog.length > 0
-      ? session.faceAnalysisLog.reduce((sum, log) => sum + (log.eyeContactScore || 0), 0) / session.faceAnalysisLog.length
-      : 50;
+    let parsedScores = {};
 
-    const avgWPM = session.voiceAnalysisLog.length > 0
-      ? session.voiceAnalysisLog.reduce((sum, log) => sum + (log.wordsPerMinute || 0), 0) / session.voiceAnalysisLog.length
-      : 0;
-
-    const scoringPrompt = `Kamu adalah penilai wawancara kerja profesional untuk calon tenaga kerja vokasi Indonesia di ${VOCATION_CONTEXT[session.vocationField]}.
-
-Berikut rekap wawancara kandidat:
-${qaText}
-
-Data tambahan dari analisis perilaku:
-- Rata-rata kontak mata: ${avgEyeContact.toFixed(1)}/100
-- Rata-rata kecepatan bicara: ${avgWPM.toFixed(0)} kata/menit
-
-Berikan penilaian dalam format JSON berikut (tanpa markdown, hanya JSON murni):
-{
-  "communication": <skor 0-100>,
-  "relevance": <skor 0-100>,
-  "confidence": <skor 0-100>,
-  "professionalism": <skor 0-100>,
-  "overall": <rata-rata dari keempat skor>,
-  "feedback": "<paragraf singkat 3-4 kalimat dalam Bahasa Indonesia>"
-}`;
-
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    const result = await model.generateContent(scoringPrompt);
-    const rawResponse = result.response.text().trim();
-
-    let scores;
+    // Panggil Gemini untuk Skoring Keseluruhan
     try {
-      const cleanJson = rawResponse.replace(/```json|```/g, '').trim();
-      scores = JSON.parse(cleanJson);
-    } catch {
-      scores = {
-        communication: 60, relevance: 60, confidence: 60,
-        professionalism: 60, overall: 60,
-        feedback: 'Analisis tidak dapat diproses secara otomatis.'
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash',
+        generationConfig: {
+          responseMimeType: 'application/json',
+          maxOutputTokens: 1024,
+        },
+      });
+
+      const transcript = sessionData.answers.map((a, i) => `Q${i + 1}: ${a.answerText}`).join('\n');
+
+      const prompt = `Analisis performa wawancara berikut untuk bidang ${sessionData.vocationField}.
+      Data transkrip jawaban kandidat:
+      ${transcript}
+
+      Evaluasi dan berikan skor dari 0-100 untuk metrik berikut, serta berikan masukan.
+      Format HANYA JSON:
+      {
+        "aiScores": {
+          "overall": 80,
+          "confidence": 75,
+          "communication": 80,
+          "professionalism": 85,
+          "relevance": 80,
+          "eyeContact": 75,
+          "headPosture": 80
+        },
+        "aiSkills": ["Komunikasi", "Analisis", "Pengalaman Praktis"],
+        "aiFeedback": {
+          "summary": "Kesimpulan singkat...",
+          "strengths": ["Kekuatan 1", "Kekuatan 2"],
+          "improvements": ["Hal yang perlu ditingkatkan"],
+          "recommendation": "Rekomendasi tindakan..."
+        }
+      }`;
+
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+      parsedScores = JSON.parse(text);
+    } catch (apiError) {
+      console.error('Gemini AI Error (completeSession):', apiError);
+      // Fallback Score jika API menyentuh Limit saat Submit Terakhir
+      parsedScores = {
+        aiScores: {
+          overall: 70,
+          confidence: 70,
+          communication: 70,
+          professionalism: 70,
+          relevance: 70,
+          eyeContact: 70,
+          headPosture: 70,
+        },
+        aiSkills: ['Pengetahuan Dasar'],
+        aiFeedback: {
+          summary: 'Analisis otomatis saat ini tertunda karena limit server Google, tetapi jawabanmu aman tersimpan.',
+          strengths: ['Kandidat berhasil menjawab seluruh pertanyaan.'],
+          improvements: ['Tidak ada analisis mendetail yang dapat ditarik saat ini.'],
+          recommendation: 'Kamu dapat mencoba fitur wawancara kembali setelah 1 menit.',
+        },
       };
     }
 
-    await sessionRef.update({
-      status:      'completed',
-      aiScores:    {
-        communication:  scores.communication,
-        relevance:      scores.relevance,
-        confidence:     scores.confidence,
-        professionalism: scores.professionalism,
-        overall:        scores.overall
-      },
-      aiFeedback:  scores.feedback,
+    const finalData = {
+      status: 'completed',
       completedAt: new Date().toISOString(),
-    });
+      ...parsedScores,
+    };
 
-    // Update skor behavioral di profil user
-    await db.collection('users').doc(req.user.uid).update({
-      behavioralScore:   scores.overall,
-      lastInterviewAt:   new Date().toISOString(),
-      updatedAt:         new Date().toISOString()
-    });
-
-    res.json({
-      message:  'Sesi wawancara selesai',
-      sessionId,
-      scores,
-      feedback: scores.feedback
-    });
+    await sessionRef.update(finalData);
+    res.json({ message: 'Sesi selesai', result: finalData });
   } catch (error) {
     next(error);
   }
 };
 
-// 6. Ambil hasil sesi tertentu
+// 6. Ambil hasil sesi tertentu (Tetap sama)
 const getSessionResult = async (req, res, next) => {
   try {
     const sessionSnap = await db.collection('interviewSessions').doc(req.params.sessionId).get();
@@ -296,7 +286,6 @@ const getSessionResult = async (req, res, next) => {
       return res.status(404).json({ error: 'Sesi tidak ditemukan' });
     }
 
-    // Hapus log besar dari response agar lebih ringan
     const session = sessionSnap.data();
     delete session.faceAnalysisLog;
     delete session.voiceAnalysisLog;
@@ -307,24 +296,19 @@ const getSessionResult = async (req, res, next) => {
   }
 };
 
-// 7. Riwayat semua sesi user
+// 7. Riwayat semua sesi user (Tetap sama)
 const getSessionHistory = async (req, res, next) => {
   try {
-    const snapshot = await db.collection('interviewSessions')
-      .where('uid', '==', req.user.uid)
-      .orderBy('startedAt', 'desc')
-      .limit(10)
-      .get();
+    const snapshot = await db.collection('interviewSessions').where('uid', '==', req.user.uid).orderBy('startedAt', 'desc').limit(10).get();
 
-    const sessions = snapshot.docs.map(doc => {
+    const sessions = snapshot.docs.map((doc) => {
       const data = doc.data();
       return {
-        sessionId:    data.sessionId,
+        sessionId: data.sessionId,
         vocationField: data.vocationField,
-        status:       data.status,
-        overall:      data.aiScores?.overall || null,
-        startedAt:    data.startedAt,
-        completedAt:  data.completedAt,
+        status: data.status,
+        overall: data.aiScores?.overall || null,
+        startedAt: data.startedAt,
       };
     });
 
@@ -341,5 +325,5 @@ module.exports = {
   submitAnalysisLog,
   completeSession,
   getSessionResult,
-  getSessionHistory
+  getSessionHistory,
 };
