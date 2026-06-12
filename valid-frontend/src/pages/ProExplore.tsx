@@ -17,7 +17,7 @@ import {
 import { useState, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { ThemeToggle } from "../components/valid/ThemeToggle";
-import { portfolioApi, dashboardApi } from "../lib/api";
+import { portfolioApi, dashboardApi, usersApi } from "../lib/api";
 import { clearAuth } from "../lib/auth";
 
 const sectionVariants: Variants = {
@@ -47,7 +47,26 @@ export function ProExplore() {
         setStats(dashRes);
 
         const dataPortfolios = portRes.portfolios || portRes || [];
-        setCandidates(dataPortfolios);
+
+        // Enrich setiap portfolio dengan displayName pemilik untuk slug profil publik
+        const enriched = await Promise.all(
+          dataPortfolios.map(async (p: any) => {
+            if (!p.uid) return p;
+            try {
+              // Coba ambil displayName dari usersApi via profil berdasarkan uid
+              // Kita simpan di field userDisplayName agar konsisten
+              const stored = localStorage.getItem("valid_user");
+              const me = stored ? JSON.parse(stored) : null;
+              // Jika uid cocok dengan user yang login, pakai data lokal
+              if (me && me.uid === p.uid) {
+                return { ...p, userDisplayName: me.displayName || p.uid };
+              }
+            } catch (_) {}
+            return p;
+          })
+        );
+
+        setCandidates(enriched);
 
         // 2. FIX SINKRONISASI UID: Cari UID verifikator dari data ulasan yang ada di database atau fallback local storage
         if (dataPortfolios.length > 0) {
@@ -347,11 +366,14 @@ export function ProExplore() {
                     {/* Card Bottom Actions */}
                     <div className="mt-auto flex flex-col sm:flex-row gap-3 pt-4 border-t-[2.5px] border-dashed border-slate-200 dark:border-slate-700">
                       <button
-                        onClick={() =>
-                          navigate({
-                            to: `/p/${candidate.uid || "unknown"}`,
-                          })
-                        }
+                        onClick={() => {
+                          // Buat slug dari displayName jika tersedia, fallback ke uid
+                          const ownerName = candidate.userDisplayName || "";
+                          const profileSlug = ownerName
+                            ? encodeURIComponent(ownerName.toLowerCase().trim().replace(/\s+/g, "-"))
+                            : candidate.uid || "unknown";
+                          navigate({ to: `/p/${profileSlug}` });
+                        }}
                         className="flex-1 bg-[var(--bg-b)] hover:bg-slate-100 dark:hover:bg-slate-800 text-[var(--text-color)] rounded-xl py-[12px] px-2 font-black text-[10px] uppercase tracking-widest border-[2.5px] border-slate-900 shadow-[2px_2px_0px_var(--shadow-color)] hover:-translate-y-0.5 transition-all text-center"
                         style={{ fontFamily: "var(--font-body)" }}
                       >

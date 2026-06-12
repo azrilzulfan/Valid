@@ -4,7 +4,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const { verifyToken } = require('../../middleware/auth');
-const { uploadPortfolio, getMyPortfolios, getPortfolioById, getPendingReviews, submitPeerReview, addUserComment, submitVerifierReview, getPublicPortfolios, getAssignedToMe } = require('./portfolio.controller');
+const { uploadPortfolio, getMyPortfolios, getPortfolioById, getPendingReviews, submitPeerReview, addUserComment, submitVerifierReview, getPublicPortfolios, getAssignedToMe, updatePortfolio, deletePortfolio, getPortfoliosByUid, toggleLikePortfolio } = require('./portfolio.controller');
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -132,6 +132,11 @@ router.get('/public', getPublicPortfolios);
  *       404:
  *         description: Portofolio tidak ditemukan
  */
+router.get('/assigned/me', verifyToken, getAssignedToMe);
+
+// Portofolio approved milik user tertentu (publik, tanpa auth)
+router.get('/user/:uid', getPortfoliosByUid);
+
 router.get('/:portfolioId', verifyToken, getPortfolioById);
 
 /**
@@ -242,6 +247,9 @@ router.post('/:portfolioId/comment', verifyToken, addUserComment);
  */
 router.post('/:portfolioId/verify', verifyToken, submitVerifierReview);
 
-router.get('/assigned/me', verifyToken, getAssignedToMe);
+router.post('/:portfolioId/like', verifyToken, toggleLikePortfolio);
+
+router.put('/:portfolioId', verifyToken, upload.array('files', 5), updatePortfolio);
+router.delete('/:portfolioId', verifyToken, deletePortfolio);
 
 module.exports = router;

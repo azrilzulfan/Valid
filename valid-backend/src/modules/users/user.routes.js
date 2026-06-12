@@ -3,7 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const { verifyToken } = require('../../middleware/auth');
-const { getUserProfile, updateUserProfile, getUserActivity } = require('./user.controller');
+const { getUserProfile, updateUserProfile, getUserActivity, getPublicUserProfile } = require('./user.controller');
 
 /**
  * @swagger
@@ -74,5 +74,25 @@ router.put('/profile', verifyToken, updateUserProfile);
  *         description: Riwayat aktivitas berhasil diambil
  */
 router.get('/activity', verifyToken, getUserActivity);
+
+/**
+ * @swagger
+ * /api/users/public/{username}:
+ *   get:
+ *     summary: Ambil profil publik user berdasarkan username slug
+ *     tags: [Users]
+ *     parameters:
+ *       - in: path
+ *         name: username
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Profil publik berhasil diambil
+ *       404:
+ *         description: Pengguna tidak ditemukan
+ */
+router.get('/public/:username', getPublicUserProfile);
 
 module.exports = router;

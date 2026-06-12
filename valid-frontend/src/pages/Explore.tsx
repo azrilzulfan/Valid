@@ -3,10 +3,11 @@
 // API YANG DIBUTUHKAN: dashboardApi.getStats, portfolioApi.getPublicPortfolios
 
 import { motion, Variants } from "framer-motion";
-import { Search, CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
+import { Search, CheckCircle2, ChevronRight, Loader2, ThumbsUp, MessageSquare } from "lucide-react";
 import { useState, useEffect } from "react";
 import { UserSidebar } from "../components/valid/UserSidebar";
 import { dashboardApi, portfolioApi } from "../lib/api";
+import { useCurrentUser } from "../lib/useCurrentUser";
 
 const sectionVariants: Variants = {
   hidden: { opacity: 0, y: 24 },
@@ -22,7 +23,297 @@ const AVATAR_COLORS = [
   "bg-orange-400",
 ];
 
+function formatRelativeTime(dateString: string) {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSecs = Math.floor(diffMs / 1000);
+  const diffMins = Math.floor(diffSecs / 60);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffSecs < 60) return "baru saja";
+  if (diffMins < 60) return `${diffMins} menit yang lalu`;
+  if (diffHours < 24) return `${diffHours} jam yang lalu`;
+  if (diffDays < 7) return `${diffDays} hari yang lalu`;
+  
+  return date.toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+interface PortfolioCardProps {
+  portfolio: any;
+  idx: number;
+  currentUser: any;
+}
+
+function PortfolioCard({ portfolio, idx, currentUser }: PortfolioCardProps) {
+  const [likes, setLikes] = useState<string[]>(portfolio.likes || []);
+  const [hasLiked, setHasLiked] = useState<boolean>((portfolio.likes || []).includes(currentUser?.uid || ""));
+  const [showComments, setShowComments] = useState<boolean>(false);
+  const [comments, setComments] = useState<any[]>(portfolio.userComments || []);
+  const [newCommentText, setNewCommentText] = useState<string>("");
+  const [isSubmittingComment, setIsSubmittingComment] = useState<boolean>(false);
+  const [isTogglingLike, setIsTogglingLike] = useState<boolean>(false);
+
+  useEffect(() => {
+    setLikes(portfolio.likes || []);
+    setComments(portfolio.userComments || []);
+    setHasLiked((portfolio.likes || []).includes(currentUser?.uid || ""));
+  }, [portfolio, currentUser]);
+
+  const handleLike = async () => {
+    if (!currentUser) {
+      alert("Silakan login terlebih dahulu untuk menyukai portofolio.");
+      return;
+    }
+    if (isTogglingLike) return;
+    setIsTogglingLike(true);
+    const nextHasLiked = !hasLiked;
+    const nextLikes = nextHasLiked 
+      ? [...likes, currentUser.uid]
+      : likes.filter(uid => uid !== currentUser.uid);
+    setHasLiked(nextHasLiked);
+    setLikes(nextLikes);
+
+    try {
+      const res = await portfolioApi.likePortfolio(portfolio.portfolioId);
+      setLikes(res.likes || []);
+      setHasLiked((res.likes || []).includes(currentUser.uid));
+    } catch (err) {
+      console.error("Gagal menyukai:", err);
+      setHasLiked(!nextHasLiked);
+      setLikes(likes);
+    } finally {
+      setIsTogglingLike(false);
+    }
+  };
+
+  const handleSendComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) {
+      alert("Silakan login terlebih dahulu untuk mengirim komentar.");
+      return;
+    }
+    if (!newCommentText.trim() || isSubmittingComment) return;
+    setIsSubmittingComment(true);
+    try {
+      const res = await portfolioApi.addComment(portfolio.portfolioId, newCommentText.trim());
+      setComments(res.userComments || []);
+      setNewCommentText("");
+    } catch (err) {
+      console.error("Gagal mengirim komentar:", err);
+      alert("Gagal menambahkan komentar.");
+    } finally {
+      setIsSubmittingComment(false);
+    }
+  };
+
+  const ownerName =
+    portfolio.userDisplayName ||
+    portfolio.ownerName ||
+    portfolio.name ||
+    portfolio.fullName ||
+    "Kandidat Valid";
+
+  const profileSlug = encodeURIComponent(
+    ownerName.toLowerCase().trim().replace(/\s+/g, "-")
+  );
+
+  const initialLetter = ownerName.charAt(0).toUpperCase();
+  const avatarBgColor = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+  const tags = portfolio.tags || portfolio.skills || [];
+  const scoreAI = portfolio.verifiedScore || portfolio.aiScore || portfolio.score || 0;
+
+  return (
+    <div className="bg-[var(--card-bg)] border-[3px] border-slate-900 rounded-[2rem] p-[24px] md:p-[32px] shadow-[6px_6px_0px_#0f172a] hover:shadow-[8px_8px_0px_#0f172a] transition-all flex flex-col justify-between self-start w-full">
+      {/* Top Section */}
+      <div className="flex flex-col md:flex-row gap-[24px] items-start">
+        {/* Avatar & Score */}
+        <div className="flex flex-col items-center shrink-0 w-full md:w-auto">
+          <div
+            className={`w-[80px] h-[80px] rounded-full border-[3px] border-slate-900 ${avatarBgColor} flex items-center justify-center shadow-[4px_4px_0px_#0f172a] mb-[16px]`}
+          >
+            <span
+              className="font-black text-[36px] text-slate-900"
+              style={{ fontFamily: "var(--font-impact)" }}
+            >
+              {initialLetter}
+            </span>
+          </div>
+          <div className="bg-white border-[2px] border-slate-900 rounded-xl px-3 py-1 flex flex-col items-center shadow-[2px_2px_0px_#0f172a]">
+            <span
+              className="font-black text-[20px] leading-none text-blue-600"
+              style={{ fontFamily: "var(--font-impact)" }}
+            >
+              {scoreAI > 0 ? scoreAI : "-"}
+            </span>
+            <span
+              className="font-bold text-[8px] uppercase tracking-widest text-slate-500"
+              style={{ fontFamily: "var(--font-body)" }}
+            >
+              Skor AI
+            </span>
+          </div>
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 flex flex-col w-full">
+          <div>
+            <h3
+              className="font-black text-[24px] text-[var(--text-color)] uppercase tracking-tight leading-none"
+              style={{ fontFamily: "var(--font-impact)" }}
+            >
+              {ownerName}
+            </h3>
+            <p
+              className="font-bold text-[13px] text-[var(--text-muted)] mt-[8px]"
+              style={{ fontFamily: "var(--font-body)" }}
+            >
+              {portfolio.vocationField || portfolio.role || "Kandidat Umum"}
+            </p>
+          </div>
+
+          {/* Tech Stack Tags */}
+          <div className="flex flex-wrap gap-[8px] mt-[16px]">
+            {tags.slice(0, 3).map((skill: string) => (
+              <span
+                key={skill}
+                className="bg-blue-100 border-[2px] border-blue-600 text-blue-700 rounded-full px-[10px] py-[4px] font-black text-[9px] uppercase tracking-widest shadow-[1px_1px_0px_#2563EB] flex items-center gap-1"
+                style={{ fontFamily: "var(--font-body)" }}
+              >
+                <CheckCircle2 className="w-3 h-3" /> {skill.toUpperCase()}
+              </span>
+            ))}
+          </div>
+
+          {/* Project Details */}
+          <div className="mt-[20px] p-[16px] bg-blue-50/50 dark:bg-blue-900/10 border-[2px] border-dashed border-blue-300 rounded-[1rem] flex-1">
+            <span
+              className="font-black text-[9px] uppercase tracking-widest text-blue-600 block mb-[4px]"
+              style={{ fontFamily: "var(--font-body)" }}
+            >
+              Proyek Unggulan
+            </span>
+            <span
+              className="font-bold text-[13px] text-[var(--text-color)] line-clamp-1"
+              style={{ fontFamily: "var(--font-body)" }}
+            >
+              {portfolio.title || "Judul Portofolio"}
+            </span>
+            {portfolio.description && (
+              <p className="text-[11px] text-[var(--text-muted)] line-clamp-2 mt-1 font-medium">
+                {portfolio.description}
+              </p>
+            )}
+          </div>
+
+          <button
+            onClick={() => window.open(`/p/${profileSlug}`, "_blank")}
+            className="mt-[16px] w-full bg-slate-900 text-white rounded-[1rem] px-[20px] py-[12px] font-black text-[12px] uppercase tracking-wider flex items-center justify-center gap-2 border-[2.5px] border-slate-900 shadow-[3px_3px_0px_#64748B] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_#64748B] transition-all"
+            style={{ fontFamily: "var(--font-body)" }}
+          >
+            Lihat Profil <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Divider */}
+      <hr className="border-t-[2px] border-dashed border-slate-300 my-4" />
+
+      {/* Actions */}
+      <div className="flex gap-4 items-center">
+        <button
+          onClick={handleLike}
+          className="flex items-center gap-2 font-bold text-[13px] transition-colors cursor-pointer px-4 py-1.5 rounded-full border-[2px] border-blue-600 text-blue-600 bg-transparent hover:bg-blue-50/50"
+          style={{ fontFamily: "var(--font-body)" }}
+        >
+          <ThumbsUp className={`w-4 h-4 ${hasLiked ? "fill-blue-600 text-blue-600" : ""}`} />
+          <span>{likes.length} Suka</span>
+        </button>
+
+        <button
+          onClick={() => setShowComments(!showComments)}
+          className="flex items-center gap-2 font-bold text-[13px] transition-colors cursor-pointer px-4 py-1.5 rounded-full border-[2px] border-blue-600 text-blue-600 bg-transparent hover:bg-blue-50/50"
+          style={{ fontFamily: "var(--font-body)" }}
+        >
+          <MessageSquare className={`w-4 h-4 ${showComments ? "fill-blue-600 text-blue-600" : ""}`} />
+          <span>{comments.length} Komentar</span>
+        </button>
+      </div>
+
+      {/* Comments Drawer */}
+      {showComments && (
+        <div className="mt-4 transition-all duration-300">
+          {comments.length > 0 && (
+            <div className="max-h-[320px] overflow-y-auto pr-1 space-y-3 mb-4 custom-scrollbar">
+              {comments.map((comment) => {
+                const commentInitial = comment.displayName
+                  ? comment.displayName.charAt(0).toUpperCase()
+                  : "?";
+                return (
+                  <div
+                    key={comment.commentId}
+                    className="bg-white border-[2px] border-slate-900 rounded-[1.2rem] p-3 shadow-[2px_2px_0px_#0f172a] flex gap-3 items-start text-left"
+                  >
+                    <div className="w-[32px] h-[32px] rounded-full border-[2px] border-slate-900 bg-yellow-300 flex items-center justify-center shrink-0">
+                      <span
+                        className="font-black text-[14px] text-slate-900"
+                        style={{ fontFamily: "var(--font-impact)" }}
+                      >
+                        {commentInitial}
+                      </span>
+                    </div>
+
+                    <div className="flex-1">
+                      <div className="flex items-baseline justify-between">
+                        <span className="font-black text-[12px] text-slate-900">
+                          {comment.displayName || "Pengguna Valid"}
+                        </span>
+                        <span className="font-bold text-[9px] text-slate-400">
+                          {formatRelativeTime(comment.createdAt)}
+                        </span>
+                      </div>
+                      <p className="text-[12px] text-slate-700 mt-1 font-medium leading-tight">
+                        {comment.comment}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <form onSubmit={handleSendComment} className="flex gap-2 items-center">
+            <input
+              type="text"
+              placeholder="Tulis komentar..."
+              value={newCommentText}
+              onChange={(e) => setNewCommentText(e.target.value)}
+              className="flex-1 bg-white border-[2px] border-slate-900 rounded-full px-4 py-2 font-bold text-[13px] text-slate-900 focus:outline-none focus:shadow-[2px_2px_0px_#0f172a] transition-all placeholder:text-slate-400"
+              style={{ fontFamily: "var(--font-body)" }}
+            />
+            <button
+              type="submit"
+              disabled={isSubmittingComment}
+              className="bg-blue-600 border-[2px] border-slate-900 text-white rounded-full px-5 py-2 font-black text-[12px] uppercase shadow-[2px_2px_0px_#0f172a] hover:shadow-[3px_3px_0px_#0f172a] hover:-translate-y-0.5 disabled:opacity-50 disabled:pointer-events-none transition-all"
+              style={{ fontFamily: "var(--font-body)" }}
+            >
+              {isSubmittingComment ? "..." : "Kirim"}
+            </button>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Explore() {
+  const { user: currentUser } = useCurrentUser();
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [stats, setStats] = useState<any>(null);
@@ -48,8 +339,8 @@ export function Explore() {
   }, [searchQuery]);
 
   // 3. Fetch Data Portofolio Publik (Murni Real API Response)
-  const fetchPublicPortfolios = async (query: string) => {
-    setIsLoadingPortfolios(true);
+  const fetchPublicPortfolios = async (query: string, silent = false) => {
+    if (!silent) setIsLoadingPortfolios(true);
     try {
       const res = await portfolioApi.getPublicPortfolios(query);
       console.log("=== RESPONS REAL BACKEND PORTFOLIO ===", res);
@@ -69,20 +360,28 @@ export function Explore() {
       setPortfolios(extractedPortfolios);
     } catch (err) {
       console.error("Gagal mengambil data portofolio publik:", err);
-      setPortfolios([]);
+      if (!silent) setPortfolios([]);
     } finally {
-      setIsLoadingPortfolios(false);
+      if (!silent) setIsLoadingPortfolios(false);
     }
   };
 
   useEffect(() => {
-    fetchPublicPortfolios(debouncedQuery);
+    // Initial fetch (shows loader)
+    fetchPublicPortfolios(debouncedQuery, false);
+
+    // Setup polling (silent fetch) every 4 seconds for real-time updates
+    const timer = setInterval(() => {
+      fetchPublicPortfolios(debouncedQuery, true);
+    }, 4000);
+
+    return () => clearInterval(timer);
   }, [debouncedQuery]);
 
   // Handler tombol manual cari portofolio
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchPublicPortfolios(searchQuery);
+    fetchPublicPortfolios(searchQuery, false);
   };
 
   return (
@@ -208,120 +507,15 @@ export function Explore() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-[24px]">
-                {portfolios.map((portfolio, idx) => {
-                  const ownerName =
-                    portfolio.userDisplayName ||
-                    portfolio.ownerName ||
-                    portfolio.name ||
-                    portfolio.fullName ||
-                    "Kandidat Valid";
-
-                  const initialLetter = ownerName.charAt(0).toUpperCase();
-                  const avatarBgColor = AVATAR_COLORS[idx % AVATAR_COLORS.length];
-                  const tags = portfolio.skills || portfolio.tags || [];
-                  const scoreAI = portfolio.aiScore || portfolio.score || 0;
-
-                  return (
-                    <div
-                      key={portfolio.id || portfolio._id}
-                      className="bg-[var(--card-bg)] border-[3px] border-slate-900 rounded-[2rem] p-[24px] md:p-[32px] shadow-[6px_6px_0px_#0f172a] hover:shadow-[8px_8px_0px_#0f172a] hover:-translate-y-1 transition-all flex flex-col md:flex-row gap-[24px]"
-                    >
-                      {/* Avatar & Score */}
-                      <div className="flex flex-col items-center shrink-0">
-                        <div
-                          className={`w-[80px] h-[80px] rounded-full border-[3px] border-slate-900 ${avatarBgColor} flex items-center justify-center shadow-[4px_4px_0px_#0f172a] mb-[16px]`}
-                        >
-                          <span
-                            className="font-black text-[36px] text-slate-900"
-                            style={{ fontFamily: "var(--font-impact)" }}
-                          >
-                            {initialLetter}
-                          </span>
-                        </div>
-                        <div className="bg-white border-[2px] border-slate-900 rounded-xl px-3 py-1 flex flex-col items-center shadow-[2px_2px_0px_#0f172a]">
-                          <span
-                            className="font-black text-[20px] leading-none text-blue-600"
-                            style={{ fontFamily: "var(--font-impact)" }}
-                          >
-                            {scoreAI > 0 ? scoreAI : "-"}
-                          </span>
-                          <span
-                            className="font-bold text-[8px] uppercase tracking-widest text-slate-500"
-                            style={{ fontFamily: "var(--font-body)" }}
-                          >
-                            Skor AI
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Info */}
-                      <div className="flex-1 flex flex-col">
-                        <div>
-                          <h3
-                            className="font-black text-[24px] text-[var(--text-color)] uppercase tracking-tight leading-none"
-                            style={{ fontFamily: "var(--font-impact)" }}
-                          >
-                            {ownerName}
-                          </h3>
-                          <p
-                            className="font-bold text-[13px] text-[var(--text-muted)] mt-[8px]"
-                            style={{ fontFamily: "var(--font-body)" }}
-                          >
-                            {portfolio.vocationField || portfolio.role || "Kandidat Umum"}
-                          </p>
-                        </div>
-
-                        {/* Tech Stack Tags */}
-                        <div className="flex flex-wrap gap-[8px] mt-[16px]">
-                          {tags.slice(0, 4).map((skill: string) => (
-                            <span
-                              key={skill}
-                              className="bg-blue-100 border-[2px] border-blue-600 text-blue-700 rounded-full px-[10px] py-[4px] font-black text-[9px] uppercase tracking-widest shadow-[1px_1px_0px_#2563EB] flex items-center gap-1"
-                              style={{ fontFamily: "var(--font-body)" }}
-                            >
-                              <CheckCircle2 className="w-3 h-3" /> {skill.toUpperCase()}
-                            </span>
-                          ))}
-                        </div>
-
-                        {/* Project Details */}
-                        <div className="mt-[20px] p-[16px] bg-blue-50/50 dark:bg-blue-900/10 border-[2px] border-dashed border-blue-300 rounded-[1rem] flex-1">
-                          <span
-                            className="font-black text-[9px] uppercase tracking-widest text-blue-600 block mb-[4px]"
-                            style={{ fontFamily: "var(--font-body)" }}
-                          >
-                            Proyek Unggulan
-                          </span>
-                          <span
-                            className="font-bold text-[13px] text-[var(--text-color)] line-clamp-1"
-                            style={{ fontFamily: "var(--font-body)" }}
-                          >
-                            {portfolio.title || "Judul Portofolio"}
-                          </span>
-                          {portfolio.description && (
-                            <p className="text-[11px] text-[var(--text-muted)] line-clamp-2 mt-1 font-medium">
-                              {portfolio.description}
-                            </p>
-                          )}
-                        </div>
-
-                        <button
-                          onClick={() =>
-                            window.open(
-                              `/portfolio/${portfolio.id || portfolio._id || portfolio.uid}`,
-                              "_blank",
-                            )
-                          }
-                          className="mt-[16px] w-full bg-slate-900 text-white rounded-[1rem] px-[20px] py-[12px] font-black text-[12px] uppercase tracking-wider flex items-center justify-center gap-2 border-[2.5px] border-slate-900 shadow-[3px_3px_0px_#64748B] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_#64748B] transition-all"
-                          style={{ fontFamily: "var(--font-body)" }}
-                        >
-                          Lihat Profil <ChevronRight className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-[24px] items-start">
+                {portfolios.map((portfolio, idx) => (
+                  <PortfolioCard
+                    key={portfolio.portfolioId || portfolio.id || portfolio._id || idx}
+                    portfolio={portfolio}
+                    idx={idx}
+                    currentUser={currentUser}
+                  />
+                ))}
               </div>
             )}
           </motion.div>

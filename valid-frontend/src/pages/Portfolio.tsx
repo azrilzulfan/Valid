@@ -2,11 +2,13 @@
 // FUNGSI: Halaman Manajemen Portofolio & Riwayat Wawancara internal kandidat terintegrasi penuh ke API Backend
 
 import { motion, Variants } from "framer-motion";
-import { ChevronRight, Plus, Loader2 } from "lucide-react";
+import { ChevronRight, Plus, Loader2, Edit2, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { UserSidebar } from "../components/valid/UserSidebar";
 import { portfolioApi, interviewApi } from "../lib/api";
 import { AddProjectModal } from "../components/portfolio/AddProjectModal";
+import { EditProjectModal } from "../components/portfolio/EditProjectModal";
+import { DeleteConfirmModal } from "../components/portfolio/DeleteConfirmModal";
 import { useCurrentUser } from "../lib/useCurrentUser";
 
 const sectionVariants: Variants = {
@@ -17,22 +19,54 @@ const sectionVariants: Variants = {
 export function Portfolio() {
   const { user } = useCurrentUser();
   const [isAddProjectOpen, setIsAddProjectOpen] = useState(false);
+  const [isEditProjectOpen, setIsEditProjectOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [projectToDelete, setProjectToDelete] = useState<any>(null);
   const [portfolios, setPortfolios] = useState<any[]>([]);
   const [interviewHistory, setInterviewHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const handleEditClick = (project: any) => {
+    setSelectedProject(project);
+    setIsEditProjectOpen(true);
+  };
+
+  const handleDeleteClick = (project: any) => {
+    setProjectToDelete(project);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (projectToDelete) {
+      try {
+        const pid = projectToDelete.portfolioId || projectToDelete.id;
+        await portfolioApi.deletePortfolio(pid);
+        alert("Proyek berhasil dihapus!");
+        fetchData();
+      } catch (err: any) {
+        console.error("Gagal menghapus proyek:", err);
+        alert(err.message || "Gagal menghapus proyek.");
+        throw err;
+      }
+    }
+  };
+
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [portRes, intRes] = await Promise.all([
-        portfolioApi.getMyPortfolios(),
-        interviewApi.getHistory(),
-      ]);
+      // Jalankan terpisah agar error salah satu tidak memblokir yang lain
+      const portRes = await portfolioApi.getMyPortfolios().catch((err) => {
+        console.error("Gagal memuat portofolio:", err);
+        return null;
+      });
+      const intRes = await interviewApi.getHistory().catch((err) => {
+        console.error("Gagal memuat riwayat wawancara:", err);
+        return null;
+      });
 
-      setPortfolios(portRes.portfolios || portRes.data || []);
-      setInterviewHistory(intRes.sessions || intRes.data || []);
-    } catch (err) {
-      console.error("Gagal memuat data portofolio & wawancara:", err);
+      if (portRes) setPortfolios(portRes.portfolios || portRes.data || []);
+      if (intRes) setInterviewHistory(intRes.sessions || intRes.data || []);
     } finally {
       setLoading(false);
     }
@@ -86,7 +120,7 @@ export function Portfolio() {
               </div>
             </div>
             <button
-              onClick={() => window.open(`/portfolio/public`, "_blank")}
+              onClick={() => window.open(`/p/${userSlug}`, "_blank")}
               className="bg-transparent hover:bg-[var(--card-bg)] transition-colors text-blue-600 rounded-[1rem] px-[20px] py-[12px] font-black text-[12px] uppercase tracking-wider flex items-center justify-center gap-2 border-[2.5px] border-blue-600 shadow-[3px_3px_0px_#2563EB] hover:shadow-[5px_5px_0px_#2563EB] hover:-translate-y-0.5 w-full sm:w-auto"
               style={{ fontFamily: "var(--font-body)" }}
             >
@@ -261,106 +295,152 @@ export function Portfolio() {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-[24px]">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-[24px] items-end">
                 {portfolios.map((proj: any, i: number) => {
                   const submissionDate =
                     proj.submittedAt || proj.createdAt
                       ? new Date(proj.submittedAt || proj.createdAt)
                       : new Date();
                   const verifiedScore = proj.verifiedScore || proj.aiScore || proj.score;
+                  const headerFile = proj.fileUrls?.find((f: any) => f.fileType?.startsWith("image/") || f.fileUrl?.match(/\.(jpeg|jpg|gif|png|webp)$/i));
+                  const headerUrl = headerFile?.fileUrl;
 
                   return (
                     <motion.div
                       key={proj.id || proj._id || proj.portfolioId || i}
                       whileHover={{ y: -4 }}
                       transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                      className="bg-[var(--card-bg)] border-[2.5px] border-[var(--border-color)] rounded-[1.5rem] overflow-hidden shadow-[4px_4px_0px_var(--shadow-color)] hover:shadow-[6px_6px_0px_var(--shadow-color)] flex flex-col"
+                      onClick={() => {
+                        const url = proj.repositoryUrl || proj.fileUrls?.[0]?.fileUrl;
+                        if (url) window.open(url, "_blank", "noopener,noreferrer");
+                      }}
+                      className="bg-[var(--card-bg)] border-[2.5px] border-[var(--border-color)] rounded-[1.5rem] overflow-hidden shadow-[4px_4px_0px_var(--shadow-color)] hover:shadow-[6px_6px_0px_var(--shadow-color)] flex flex-col relative cursor-pointer"
                     >
-                      {/* Card Thumbnail Gradient placeholder */}
-                      <div className="h-[140px] bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/40 dark:to-blue-800/20 relative flex items-center justify-center border-b-[2.5px] border-[var(--border-color)]">
-                        <span
-                          className="font-black text-[40px] text-blue-500/20 tracking-tighter"
-                          style={{ fontFamily: "var(--font-impact)" }}
+                      {/* Edit & Delete — selalu di pojok kanan atas card */}
+                      <div className="absolute top-[14px] right-[14px] flex gap-[8px] z-20">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleEditClick(proj); }}
+                          className="w-[36px] h-[36px] flex items-center justify-center bg-[var(--card-bg)] border-[2px] border-[var(--border-color)] rounded-[10px] shadow-[2px_2px_0px_var(--shadow-color)] hover:bg-slate-100 transition-colors cursor-pointer"
+                          title="Edit Proyek"
                         >
-                          {proj.title?.substring(0, 2)?.toUpperCase() || "PF"}
-                        </span>
-
-                        {/* Status Badge */}
-                        <div
-                          className={`absolute top-[12px] left-[12px] px-[10px] py-[4px] rounded-full border-[2px] font-black text-[9px] uppercase tracking-widest ${
-                            proj.status === "approved"
-                              ? "bg-green-100 border-green-500 text-green-700"
-                              : proj.status === "under_review" || proj.status === "pending"
-                                ? "bg-blue-100 border-blue-500 text-blue-700"
-                                : "bg-yellow-100 border-yellow-500 text-yellow-700"
-                          }`}
-                          style={{ fontFamily: "var(--font-body)" }}
+                          <Edit2 className="w-[15px] h-[15px] text-slate-700" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDeleteClick(proj); }}
+                          className="w-[36px] h-[36px] flex items-center justify-center bg-[var(--card-bg)] border-[2px] border-[var(--border-color)] rounded-[10px] shadow-[2px_2px_0px_var(--shadow-color)] hover:bg-red-50 transition-colors cursor-pointer"
+                          title="Hapus Proyek"
                         >
-                          {proj.status === "approved"
-                            ? "Disetujui"
-                            : proj.status === "under_review" || proj.status === "pending"
-                              ? "Direview"
-                              : "Menunggu"}
-                        </div>
+                          <Trash2 className="w-[15px] h-[15px] text-red-500" />
+                        </button>
+                      </div>
 
-                        {/* Verified Score */}
+                      {/* Header — gambar jika ada, inisial biru jika tidak */}
+                      <div className="h-[140px] border-b-[2.5px] border-[var(--border-color)] overflow-hidden relative flex items-center justify-center"
+                        style={headerUrl ? {} : { background: "linear-gradient(135deg, #bfdbfe 0%, #93c5fd 50%, #bfdbfe 100%)" }}
+                      >
+                        {headerUrl ? (
+                          <img src={headerUrl} alt={proj.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <span
+                            className="font-black text-[52px] tracking-tighter select-none"
+                            style={{
+                              fontFamily: "var(--font-impact)",
+                              color: "rgba(59,130,246,0.35)",
+                              letterSpacing: "-0.04em",
+                            }}
+                          >
+                            {proj.title
+                              ? proj.title
+                                  .split(" ")
+                                  .slice(0, 3)
+                                  .map((w: string) => w[0])
+                                  .join("")
+                                  .toUpperCase()
+                              : "?"}
+                          </span>
+                        )}
+
+                        {/* Verified Score overlay */}
                         {verifiedScore && (
-                          <div className="absolute top-[12px] right-[12px] bg-white border-[2px] border-slate-900 rounded-lg px-[10px] py-[4px] shadow-[2px_2px_0px_#0f172a]">
-                            <span
-                              className="font-black text-[14px] text-blue-600"
-                              style={{ fontFamily: "var(--font-impact)" }}
-                            >
-                              {verifiedScore}
-                            </span>
+                          <div className="absolute top-[14px] left-[14px] bg-white border-[2px] border-slate-900 rounded-lg px-[10px] py-[4px] shadow-[2px_2px_0px_#0f172a]">
+                            <span className="font-black text-[14px] text-blue-600" style={{ fontFamily: "var(--font-impact)" }}>{verifiedScore}</span>
                             <span className="font-bold text-[9px] text-slate-500 ml-1">/100</span>
                           </div>
                         )}
                       </div>
 
-                      {/* Content Card */}
-                      <div className="p-[20px] flex flex-col flex-1">
+                      {/* Content */}
+                      <div className="p-[20px] flex flex-col">
                         <h4
-                          className="font-black text-[16px] text-[var(--text-color)] uppercase tracking-wide line-clamp-1"
+                          className="font-black text-[16px] text-[var(--text-color)] uppercase tracking-wide line-clamp-1 pr-[88px]"
                           style={{ fontFamily: "var(--font-body)" }}
                         >
                           {proj.title}
                         </h4>
+
+                        {/* Tags */}
+                        <div className="flex flex-wrap gap-[6px] mt-[10px]">
+                          <span
+                            className="bg-transparent border-[2px] border-[var(--border-color)] text-[var(--text-muted)] rounded-full px-[10px] py-[3px] font-black text-[9px] uppercase tracking-widest"
+                            style={{ fontFamily: "var(--font-body)" }}
+                          >
+                            {proj.vocationField || user?.vocationField || "Teknis"}
+                          </span>
+                          {(proj.tags || proj.skills || []).map((tag: string, tagIdx: number) => (
+                            <span
+                              key={tagIdx}
+                              className="bg-transparent border-[2px] border-[var(--border-color)] text-[var(--text-muted)] rounded-full px-[10px] py-[3px] font-black text-[9px] uppercase tracking-widest"
+                              style={{ fontFamily: "var(--font-body)" }}
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+
+                        {/* Description */}
                         <p
-                          className="font-bold text-[12px] text-[var(--text-muted)] mt-[8px] line-clamp-2 leading-relaxed h-[36px]"
+                          className="font-bold text-[12px] text-[var(--text-muted)] mt-[12px] line-clamp-2 leading-relaxed"
                           style={{ fontFamily: "var(--font-body)" }}
                         >
                           {proj.description || "Tidak ada deskripsi proyek."}
                         </p>
 
-                        {/* Tags / Field */}
-                        <div className="flex flex-wrap gap-[6px] mt-[12px]">
-                          <span
-                            className="bg-[var(--bg-a)] border-[2px] border-[var(--border-color)] text-[var(--text-muted)] rounded-md px-[8px] py-[4px] font-black text-[9px] uppercase tracking-widest"
-                            style={{ fontFamily: "var(--font-body)" }}
-                          >
-                            {proj.vocationField || user?.vocationField || "Teknis"}
-                          </span>
-                        </div>
-
+                        {/* Date */}
                         <div
-                          className="font-bold text-[10px] text-[var(--text-muted)]/60 mt-[12px]"
+                          className="font-bold text-[11px] text-[var(--text-muted)]/50 mt-[12px]"
                           style={{ fontFamily: "var(--font-body)" }}
                         >
-                          {submissionDate.toLocaleDateString("id-ID")}
+                          {submissionDate.toLocaleDateString("id-ID", { month: "short", year: "numeric" })}
                         </div>
 
-                        <div className="mt-auto pt-[16px] border-t-[2px] border-dashed border-[var(--border-color)] flex items-center justify-between">
+                        {/* Footer */}
+                        <div className="mt-[16px] pt-[14px] border-t-[2px] border-dashed border-[var(--border-color)] flex items-center justify-between">
                           <span
-                            className="font-bold text-[10px] text-[var(--text-muted)] uppercase tracking-widest border-[2px] border-[var(--border-color)] px-[8px] py-[4px] rounded-full"
+                            className={`font-black text-[10px] uppercase tracking-widest border-[2px] px-[12px] py-[5px] rounded-full shrink-0 ${
+                              proj.status === "approved"
+                                ? "bg-green-100 border-green-500 text-green-700"
+                                : proj.status === "under_review"
+                                  ? "bg-blue-100 border-blue-500 text-blue-700"
+                                  : "bg-yellow-100 border-yellow-500 text-yellow-700"
+                            }`}
                             style={{ fontFamily: "var(--font-body)" }}
                           >
-                            {proj.peerReviews?.length || 0} Peer Review
+                            {proj.status === "approved"
+                              ? "Disetujui"
+                              : proj.status === "under_review"
+                                ? "Direview"
+                                : "Belum Direview"}
                           </span>
 
-                          {proj.status !== "approved" && (
+                          {proj.status === "pending" && (
                             <button
-                              onClick={() => (window.location.href = "/dashboard/verifier")}
-                              className="font-black text-[11px] text-blue-600 uppercase tracking-widest hover:underline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const firstTag = (proj.tags || proj.skills || [])[0] || proj.vocationField || "";
+                                const query = firstTag ? `?q=${encodeURIComponent(firstTag)}` : "";
+                                window.location.href = `/dashboard/professionals${query}`;
+                              }}
+                              className="font-black text-[11px] text-blue-600 uppercase tracking-widest hover:underline cursor-pointer whitespace-nowrap"
                               style={{ fontFamily: "var(--font-body)" }}
                             >
                               Minta Review →
@@ -384,6 +464,28 @@ export function Portfolio() {
           setIsAddProjectOpen(false);
           fetchData();
         }}
+      />
+
+      {/* MODAL EDIT PROYEK */}
+      <EditProjectModal
+        isOpen={isEditProjectOpen}
+        onClose={() => {
+          setIsEditProjectOpen(false);
+          setSelectedProject(null);
+        }}
+        project={selectedProject}
+        onSuccess={fetchData}
+      />
+
+      {/* MODAL KONFIRMASI HAPUS */}
+      <DeleteConfirmModal
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => {
+          setIsDeleteConfirmOpen(false);
+          setProjectToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        projectName={projectToDelete?.title || ""}
       />
     </div>
   );

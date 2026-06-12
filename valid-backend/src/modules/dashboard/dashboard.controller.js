@@ -164,6 +164,7 @@ const getReviewerDashboard = async (req, res, next) => {
         displayName: userData.displayName || verifierProfileData.fullName || 'Reviewer Profesional',
         coins: userData.coins || 0, // Saldo koin riil dari koleksi users
         totalReviews: verifierProfileData.totalReviews || completedReviews.length, // Counter atomik dari verifierProfiles
+        verifierStatus: userData.verifierStatus || null,
       },
       summary: {
         totalReviewsGiven: verifierProfileData.totalReviews || completedReviews.length,
@@ -185,7 +186,7 @@ const getPlatformStats = async (req, res, next) => {
     const [usersSnap, sessionsSnap, portfoliosSnap, badgesSnap] = await Promise.all([
       db.collection('users').count().get(),
       db.collection('interviewSessions').where('status', '==', 'completed').count().get(),
-      db.collection('portfolios').where('status', '==', 'approved').count().get(),
+      db.collection('portfolios').count().get(),
       db.collection('badges').where('isRevoked', '==', false).count().get(),
     ]);
 

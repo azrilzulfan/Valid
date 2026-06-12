@@ -5,7 +5,7 @@ const { auth, db } = require('../../config/firebase');
 // Registrasi user baru setelah Firebase Auth berhasil di frontend
 const registerUser = async (req, res, next) => {
   try {
-    const { uid, email, displayName, vocationField } = req.body;
+    const { uid, email, displayName, vocationField, role } = req.body;
 
     if (!uid || !email) {
       return res.status(400).json({ error: 'uid dan email wajib diisi' });
@@ -23,8 +23,8 @@ const registerUser = async (req, res, next) => {
       email,
       displayName:      displayName || '',
       vocationField:    vocationField || '',
-      role:             'candidate',
-      verifierStatus:   null,
+      role:             role || 'candidate',
+      verifierStatus:   role === 'verifier' ? 'pending' : null,
       reputationPoints: 0,
       badgeLevel:       null,
       bio:              '',

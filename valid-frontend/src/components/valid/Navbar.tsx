@@ -24,9 +24,16 @@ export function Navbar() {
   const userStr = typeof window !== 'undefined' ? localStorage.getItem('valid_user') : null;
   const user = userStr ? JSON.parse(userStr) : null;
 
+  const getDashboardPath = () => {
+    if (!user) return "/dashboard";
+    if (user.role === "admin") return "/admin";
+    if (user.role === "verifier" || user.role === "reviewer" || user.verifierStatus === "pending") return "/pro/dashboard";
+    return "/dashboard";
+  };
+
   useEffect(() => {
     if (user) {
-      notificationsApi.getNotifications().then(res => setNotifs(res || [])).catch(() => {});
+      notificationsApi.getNotifications().then(res => setNotifs(Array.isArray(res) ? res : (res?.notifications || res?.data || []))).catch(() => {});
     }
   }, []);
 
@@ -111,14 +118,14 @@ export function Navbar() {
 
           {user ? (
             <div className="flex items-center gap-3">
-              <a href="/dashboard" className="relative p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+              <a href={getDashboardPath()} className="relative p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
                 <Bell className="w-5 h-5 text-slate-800 dark:text-slate-200" />
                 {unreadCount > 0 && (
                   <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[var(--bg-a)]"></span>
                 )}
               </a>
               <a
-                href="/dashboard"
+                href={getDashboardPath()}
                 className={`hidden sm:inline-flex items-center justify-center rounded-full font-bold transition-all hover:scale-105 active:scale-95 bg-slate-900 dark:bg-white text-white dark:text-slate-900 ${
                   shrunk ? "px-5 py-2 text-sm" : "px-6 py-2.5 text-sm"
                 }`}
@@ -164,7 +171,7 @@ export function Navbar() {
           ))}
           {user ? (
             <a
-              href="/dashboard"
+              href={getDashboardPath()}
               onClick={() => setOpen(false)}
               className="block mt-2 px-4 py-3.5 rounded-xl font-bold text-white text-center"
               style={{ background: "var(--navy)" }}

@@ -108,6 +108,14 @@ export const usersApi = {
     });
     return handleRes(res);
   },
+
+  getPublicUserProfile: async (username: string) => {
+    const res = await fetch(`${BASE_URL}/api/users/public/${encodeURIComponent(username)}`, {
+      method: "GET",
+      headers: getHeaders(true),
+    });
+    return handleRes(res);
+  },
 };
 
 // ==========================================
@@ -184,6 +192,14 @@ export const portfolioApi = {
     return handleRes(res);
   },
 
+  likePortfolio: async (portfolioId: string) => {
+    const res = await fetch(`${BASE_URL}/api/portfolio/${portfolioId}/like`, {
+      method: "POST",
+      headers: getHeaders(),
+    });
+    return handleRes(res);
+  },
+
   submitVerifierReview: async (
     portfolioId: string,
     data: {
@@ -205,6 +221,31 @@ export const portfolioApi = {
     const res = await fetch(`${BASE_URL}/api/portfolio/assigned/me`, {
       method: "GET",
       headers: getHeaders(),
+    });
+    return handleRes(res);
+  },
+
+  updatePortfolio: async (portfolioId: string, formData: FormData) => {
+    const res = await fetch(`${BASE_URL}/api/portfolio/${portfolioId}`, {
+      method: "PUT",
+      headers: getHeaders(false, true),
+      body: formData,
+    });
+    return handleRes(res);
+  },
+
+  deletePortfolio: async (portfolioId: string) => {
+    const res = await fetch(`${BASE_URL}/api/portfolio/${portfolioId}`, {
+      method: "DELETE",
+      headers: getHeaders(),
+    });
+    return handleRes(res);
+  },
+
+  getPortfoliosByUid: async (uid: string) => {
+    const res = await fetch(`${BASE_URL}/api/portfolio/user/${uid}`, {
+      method: "GET",
+      headers: getHeaders(true),
     });
     return handleRes(res);
   },

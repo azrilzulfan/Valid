@@ -1,7 +1,7 @@
-// src/components/portfolio/AddProjectModal.tsx
+// src/components/portfolio/EditProjectModal.tsx
 import { AnimatePresence, motion, Variants } from "framer-motion";
 import { X, UploadCloud, Loader2, CheckCircle2 } from "lucide-react";
-import { useState, KeyboardEvent } from "react";
+import { useState, useEffect, KeyboardEvent } from "react";
 import { portfolioApi } from "../../lib/api";
 
 const modalVariants: Variants = {
@@ -10,9 +10,11 @@ const modalVariants: Variants = {
   exit: { opacity: 0, scale: 0.96, y: 12, transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] } },
 };
 
-interface AddProjectModalProps {
+interface EditProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
+  project: any;
+  onSuccess: () => void;
 }
 
 const inputClass =
@@ -20,7 +22,7 @@ const inputClass =
 const labelClass =
   "block font-black text-[10px] text-[var(--text-muted)] uppercase tracking-widest mb-[6px]";
 
-export function AddProjectModal({ isOpen, onClose }: AddProjectModalProps) {
+export function EditProjectModal({ isOpen, onClose, project, onSuccess }: EditProjectModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [vocationField, setVocationField] = useState("");
@@ -30,6 +32,18 @@ export function AddProjectModal({ isOpen, onClose }: AddProjectModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (project && isOpen) {
+      setTitle(project.title || "");
+      setDescription(project.description || "");
+      setVocationField(project.vocationField || "");
+      setRepositoryUrl(project.repositoryUrl || "");
+      setTags(project.tags || project.skills || []);
+      setFile(null);
+      setSaved(false);
+    }
+  }, [project, isOpen]);
 
   const handleKeyDownTags = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && tagInput.trim() !== "") {
@@ -42,7 +56,7 @@ export function AddProjectModal({ isOpen, onClose }: AddProjectModalProps) {
 
   const removeTag = (i: number) => setTags(tags.filter((_, idx) => idx !== i));
 
-  const handleUpload = async (e: React.FormEvent) => {
+  const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !description.trim() || !repositoryUrl.trim()) {
       alert("Judul, Deskripsi, dan Link Repository wajib diisi!");
@@ -58,21 +72,14 @@ export function AddProjectModal({ isOpen, onClose }: AddProjectModalProps) {
       formData.append("tags", JSON.stringify(tags));
       if (file) formData.append("files", file);
 
-      await portfolioApi.upload(formData);
-
+      await portfolioApi.updatePortfolio(project.portfolioId || project.id, formData);
       setSaved(true);
       setTimeout(() => {
-        setTitle("");
-        setDescription("");
-        setVocationField("");
-        setRepositoryUrl("");
-        setTags([]);
-        setFile(null);
-        setSaved(false);
+        onSuccess();
         onClose();
       }, 900);
     } catch (err: any) {
-      alert(err.message || "Gagal menyimpan proyek. Periksa koneksi Anda.");
+      alert(err.message || "Gagal memperbarui proyek.");
     } finally {
       setIsSubmitting(false);
     }
@@ -106,7 +113,7 @@ export function AddProjectModal({ isOpen, onClose }: AddProjectModalProps) {
                 className="font-black text-[20px] text-[var(--text-color)] uppercase tracking-tight"
                 style={{ fontFamily: "var(--font-impact)" }}
               >
-                Tambah Proyek
+                Edit Proyek
               </h2>
               <button
                 type="button"
@@ -119,7 +126,7 @@ export function AddProjectModal({ isOpen, onClose }: AddProjectModalProps) {
             </div>
 
             {/* FORM */}
-            <form onSubmit={handleUpload} className="px-[28px] py-[22px] flex flex-col gap-[14px]">
+            <form onSubmit={handleUpdate} className="px-[28px] py-[22px] flex flex-col gap-[14px]">
 
               {/* Judul */}
               <div>
@@ -207,10 +214,10 @@ export function AddProjectModal({ isOpen, onClose }: AddProjectModalProps) {
 
               {/* Upload File */}
               <div>
-                <label className={labelClass}>Header Gambar Proyek (Opsional)</label>
-                <input id="add-file-input" type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} disabled={isSubmitting} accept="image/*" className="hidden" />
+                <label className={labelClass}>Ganti Header Gambar (Opsional)</label>
+                <input id="edit-file-input" type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} disabled={isSubmitting} accept="image/*" className="hidden" />
                 <label
-                  htmlFor="add-file-input"
+                  htmlFor="edit-file-input"
                   className={`flex items-center gap-[12px] w-full border-[2.5px] border-dashed border-[var(--border-color)] rounded-[0.875rem] px-[16px] py-[12px] transition-colors ${isSubmitting ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:border-blue-500 hover:bg-blue-50/50"}`}
                 >
                   <div className="w-9 h-9 rounded-[8px] bg-[var(--bg-a)] border-[2px] border-[var(--border-color)] flex items-center justify-center shrink-0">
@@ -220,7 +227,7 @@ export function AddProjectModal({ isOpen, onClose }: AddProjectModalProps) {
                     <p className="font-black text-[11px] text-[var(--text-color)] uppercase tracking-wide truncate">
                       {file ? file.name : "Klik atau seret file gambar"}
                     </p>
-                    <p className="font-bold text-[10px] text-[var(--text-muted)] mt-[1px]">JPG, PNG (maks. 10MB) — kosongkan jika tidak ada header</p>
+                    <p className="font-bold text-[10px] text-[var(--text-muted)] mt-[1px]">JPG, PNG (maks. 10MB) — kosongkan jika tidak diganti</p>
                   </div>
                 </label>
               </div>
@@ -248,10 +255,10 @@ export function AddProjectModal({ isOpen, onClose }: AddProjectModalProps) {
                   ) : isSubmitting ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Mengunggah...
+                      Menyimpan...
                     </>
                   ) : (
-                    "Simpan Proyek"
+                    "Simpan Perubahan"
                   )}
                 </button>
               </div>

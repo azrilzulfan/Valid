@@ -5,17 +5,41 @@
 
 import { Link, useLocation } from "@tanstack/react-router";
 import { LayoutDashboard, ShieldCheck, Users, Coins, LogOut } from "lucide-react";
-import { authApi } from "../../lib/api";
+import { authApi, verifierApi } from "../../lib/api";
 import { clearAuth } from "../../lib/auth";
 import { firebaseAuth } from "../../lib/firebase";
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export function AdminSidebar() {
   const location = useLocation();
 
   const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [pendingCount, setPendingCount] = useState<number>(0);
+
+  useEffect(() => {
+    let active = true;
+    const loadPendingCount = () => {
+      verifierApi.getPendingApplications()
+        .then((res) => {
+          if (active && res.applications) {
+            setPendingCount(res.applications.length);
+          }
+        })
+        .catch((err) => {
+          console.error("Gagal memuat count pending verifikator:", err);
+        });
+    };
+
+    loadPendingCount();
+
+    window.addEventListener("verifier-status-changed", loadPendingCount);
+    return () => {
+      active = false;
+      window.removeEventListener("verifier-status-changed", loadPendingCount);
+    };
+  }, []);
 
   const handleLogout = async () => {
     if (isLoggingOut) return;
@@ -36,7 +60,7 @@ export function AdminSidebar() {
 
   const navLinks = [
     { label: "Overview", icon: LayoutDashboard, path: "/admin" },
-    { label: "Verifikasi BNSP", icon: ShieldCheck, path: "/admin/verify", badge: 3 },
+    { label: "Verifikasi BNSP", icon: ShieldCheck, path: "/admin/verify", badge: pendingCount },
     { label: "Manajemen User", icon: Users, path: "/admin/users" },
     { label: "Coin Ledger", icon: Coins, path: "/admin/coins" },
   ];

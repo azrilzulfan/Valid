@@ -75,7 +75,6 @@ export function UserSidebar({ activePath }: UserSidebarProps) {
     { icon: Mic, label: "Wawancara AI", path: "/dashboard/ai-interview" },
     { icon: Star, label: "Review Saya", path: "/dashboard/reviews" },
     { icon: Users, label: "Profesional", path: "/dashboard/professionals" },
-    { icon: Coins, label: "Koin", mobileHidden: true, path: "/dashboard/coins" },
   ];
 
   const initial = user?.displayName?.charAt(0)?.toUpperCase() || "?";
@@ -195,6 +194,21 @@ export function UserSidebar({ activePath }: UserSidebarProps) {
             );
           })}
 
+          {/* MOBILE: Koin shortcut */}
+          <div
+            onClick={() => navigate({ to: "/dashboard/coins" as any })}
+            className={`group flex md:hidden flex-col items-center justify-center gap-1 px-3 py-2 rounded-[1rem] cursor-pointer transition-all duration-300 shrink-0 ${
+              currentPath === "/dashboard/coins"
+                ? "text-yellow-500"
+                : "text-[var(--text-muted)] hover:text-yellow-500"
+            }`}
+          >
+            <Coins className="w-[20px] h-[20px]" strokeWidth={2} />
+            <span className="text-[9px] uppercase tracking-wider font-bold" style={{ fontFamily: "var(--font-body)" }}>
+              Koin
+            </span>
+          </div>
+
           {/* MOBILE LOGOUT */}
           <div
             onClick={handleLogout}
@@ -213,11 +227,52 @@ export function UserSidebar({ activePath }: UserSidebarProps) {
           </div>
         </div>
 
-        {/* BOTTOM: Logout */}
-        <div className="hidden md:flex flex-col p-[24px] border-t-[2.5px] border-[var(--border-color)] bg-[var(--bg-a)]">
+        {/* BOTTOM: Coin Widget + Logout */}
+        <div className="hidden md:flex flex-col gap-[12px] p-[16px] border-t-[2.5px] border-[var(--border-color)] bg-[var(--bg-a)]">
+          {/* COIN CARD — desain kuning sesuai referensi */}
+          <div
+            onClick={() => navigate({ to: "/dashboard/coins" as any })}
+            className="cursor-pointer bg-yellow-400 border-[2.5px] border-slate-900 rounded-[1.25rem] px-[16px] py-[14px] shadow-[4px_4px_0px_#0f172a] hover:shadow-[6px_6px_0px_#0f172a] hover:-translate-y-0.5 transition-all"
+          >
+            {/* Row: ikon + jumlah koin */}
+            <div className="flex items-center gap-[10px] mb-[10px]">
+              <div className="w-[36px] h-[36px] rounded-full border-[2.5px] border-slate-900 bg-white flex items-center justify-center shadow-[2px_2px_0px_#0f172a] shrink-0">
+                <Coins className="w-[18px] h-[18px] text-yellow-500" strokeWidth={2.5} />
+              </div>
+              <div className="flex items-baseline gap-[6px]">
+                <span
+                  className="font-black text-[28px] text-slate-900 leading-none"
+                  style={{ fontFamily: "var(--font-impact)" }}
+                >
+                  {user?.coins ?? 0}
+                </span>
+                <span
+                  className="font-black text-[11px] text-slate-700 uppercase tracking-widest"
+                  style={{ fontFamily: "var(--font-body)" }}
+                >
+                  KOIN
+                </span>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="border-t-[2px] border-dashed border-slate-900/30 mb-[10px]" />
+
+            {/* Tombol Tambah Koin */}
+            <div className="flex items-center justify-center gap-2">
+              <span
+                className="font-black text-[11px] text-slate-900 uppercase tracking-widest"
+                style={{ fontFamily: "var(--font-body)" }}
+              >
+                TAMBAH KOIN
+              </span>
+            </div>
+          </div>
+
+          {/* Logout */}
           <div
             onClick={handleLogout}
-            className="flex items-center justify-center gap-2 mt-[20px] cursor-pointer group px-3 py-2 border-[2px] border-transparent hover:border-[var(--border-color)] rounded-lg transition-all"
+            className="flex items-center justify-center gap-2 cursor-pointer group px-3 py-2 border-[2px] border-transparent hover:border-[var(--border-color)] rounded-lg transition-all"
           >
             <LogOut className="w-[16px] h-[16px] text-[var(--text-muted)] group-hover:text-red-500 transition-colors" />
             <span

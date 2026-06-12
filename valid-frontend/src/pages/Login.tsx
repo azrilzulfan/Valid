@@ -42,11 +42,18 @@ export function Login() {
 
       // 4. Simpan data lengkap ke LocalStorage
       if (response.user) {
-        saveUser(response.user);
-        saveRole(response.user.role || "user");
+        const userRole = (response.user.role === "candidate" && response.user.verifierStatus === "pending")
+          ? "verifier"
+          : (response.user.role || "user");
+
+        saveUser({
+          ...response.user,
+          role: userRole,
+        });
+        saveRole(userRole);
 
         // 5. Routing otomatis berdasarkan Role
-        switch (response.user.role) {
+        switch (userRole) {
           case "admin":
             navigate({ to: "/admin" as any });
             break;

@@ -68,6 +68,7 @@ export function AdminVerify() {
       setApproveModal(null);
       setDocViewer(null);
       addToast({ type: "success", message: `${user?.name || "Verifikator"} berhasil disetujui!` });
+      window.dispatchEvent(new CustomEvent("verifier-status-changed"));
     } catch (err: any) {
       addToast({ type: "error", message: err.message || "Gagal menyetujui verifikator" });
     }
@@ -87,6 +88,7 @@ export function AdminVerify() {
       setDocViewer(null);
       setRejectReason("");
       addToast({ type: "error", message: `Verifikasi ${user?.name || "Verifikator"} ditolak.` });
+      window.dispatchEvent(new CustomEvent("verifier-status-changed"));
     } catch (err: any) {
       addToast({ type: "error", message: err.message || "Gagal menolak verifikator" });
     }

@@ -22,6 +22,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { ThemeToggle } from "../components/valid/ThemeToggle";
 import { dashboardApi, portfolioApi } from "../lib/api";
 import { clearAuth } from "../lib/auth";
+import { useCurrentUser } from "../lib/useCurrentUser";
 
 const sectionVariants: Variants = {
   hidden: { opacity: 0, y: 24 },
@@ -30,6 +31,7 @@ const sectionVariants: Variants = {
 
 export function ProDashboard() {
   const navigate = useNavigate();
+  const { user } = useCurrentUser();
   const [activeTab, setActiveTab] = useState("Semua");
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
@@ -296,6 +298,28 @@ export function ProDashboard() {
               dan pantau rekam jejak verifikasi Anda.
             </p>
           </motion.div>
+
+          {/* PENDING APPROVAL BANNER */}
+          {(user?.verifierStatus === "pending" || stats?.profile?.verifierStatus === "pending") && (
+            <motion.div
+              variants={sectionVariants}
+              className="mb-[32px] bg-yellow-100 dark:bg-yellow-950/30 border-[3px] border-yellow-500 rounded-[1.5rem] p-6 shadow-[4px_4px_0px_#eab308] text-[var(--text-color)]"
+            >
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-black text-lg text-yellow-800 dark:text-yellow-400 uppercase tracking-tight" style={{ fontFamily: "var(--font-impact)" }}>
+                    Pendaftaran Verifikator Sedang Ditinjau
+                  </h3>
+                  <p className="text-sm font-semibold text-yellow-700 dark:text-yellow-500 mt-1 leading-relaxed">
+                    Akun verifikator profesional Anda sedang menunggu proses persetujuan oleh Admin. Anda akan menerima notifikasi setelah akun disetujui.
+                  </p>
+                </div>
+                <div className="px-4 py-2 bg-yellow-500 text-slate-900 border-2 border-slate-900 rounded-xl font-black text-[11px] uppercase tracking-widest shadow-[2px_2px_0px_#000] shrink-0">
+                  PENDING
+                </div>
+              </div>
+            </motion.div>
+          )}
 
           {/* STAT CARDS ROW */}
           <motion.div

@@ -2,6 +2,51 @@
 
 const { db, admin } = require('../../config/firebase');
 
+// Ambil profil user secara publik berdasarkan username slug (tanpa auth)
+const getPublicUserProfile = async (req, res, next) => {
+  try {
+    const { username } = req.params;
+    // Konversi slug kembali ke bentuk nama (rizky-pratama -> rizky pratama)
+    const decodedName = decodeURIComponent(username).replace(/-/g, ' ').toLowerCase();
+
+    // Cari user berdasarkan displayName (case-insensitive)
+    const snapshot = await db.collection('users')
+      .orderBy('displayName')
+      .get();
+
+    let found = null;
+    for (const doc of snapshot.docs) {
+      const data = doc.data();
+      const nameLower = (data.displayName || '').toLowerCase().trim();
+      if (nameLower === decodedName) {
+        found = data;
+        break;
+      }
+    }
+
+    if (!found) {
+      return res.status(404).json({ error: 'Pengguna tidak ditemukan' });
+    }
+
+    // Hanya kembalikan data yang aman untuk publik
+    res.json({
+      profile: {
+        uid: found.uid,
+        displayName: found.displayName,
+        email: found.email || '',
+        vocationField: found.vocationField || '',
+        bio: found.bio || '',
+        location: found.location || '',
+        badgeLevel: found.badgeLevel || null,
+        reputationPoints: found.reputationPoints || 0,
+        behavioralScore: found.behavioralScore || null,
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Ambil profil user
 const getUserProfile = async (req, res, next) => {
   try {
@@ -58,4 +103,4 @@ const getUserActivity = async (req, res, next) => {
   }
 };
 
-module.exports = { getUserProfile, updateUserProfile, getUserActivity };
+module.exports = { getUserProfile, updateUserProfile, getUserActivity, getPublicUserProfile };

@@ -131,7 +131,7 @@ export function Register() {
         alert(
           "Pendaftaran Berhasil! Akun verifikator profesional Anda sedang menunggu proses persetujuan oleh Admin.",
         );
-        navigate({ to: "/dashboard" });
+        navigate({ to: "/pro/dashboard" as any });
       } else {
         // Alur reguler untuk pencari kerja
         saveRole("candidate");
